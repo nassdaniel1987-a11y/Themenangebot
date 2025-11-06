@@ -47,6 +47,50 @@ const iconPickerSchliessen = document.getElementById('icon-picker-schliessen');
 const hiddenIconInput = document.getElementById('icon');
 
 let aktuelleBilderUrls = [];
+let previousFocusElement = null;
+
+// Fokus-Management für Accessibility
+function trapFocusInModal(modal) {
+    const focusableElements = modal.querySelectorAll(
+        'button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])'
+    );
+    const firstElement = focusableElements[0];
+    const lastElement = focusableElements[focusableElements.length - 1];
+
+    modal.addEventListener('keydown', function(e) {
+        if (e.key !== 'Tab') return;
+
+        if (e.shiftKey) {
+            if (document.activeElement === firstElement) {
+                e.preventDefault();
+                lastElement.focus();
+            }
+        } else {
+            if (document.activeElement === lastElement) {
+                e.preventDefault();
+                firstElement.focus();
+            }
+        }
+    });
+}
+
+function openModalWithFocus(modal) {
+    previousFocusElement = document.activeElement;
+    modal.showModal();
+    const firstFocusable = modal.querySelector('input:not([type="hidden"]), button, textarea, select, a[href]');
+    if (firstFocusable) {
+        setTimeout(() => firstFocusable.focus(), 50);
+    }
+    trapFocusInModal(modal);
+}
+
+function closeModalAndRestoreFocus(modal) {
+    modal.close();
+    if (previousFocusElement) {
+        previousFocusElement.focus();
+        previousFocusElement = null;
+    }
+}
 
 function applyTheme(theme) {
     document.body.classList.toggle('dark-theme', theme === 'dark');
@@ -112,23 +156,23 @@ function erstelleKachelHTML(angebot) {
     const kachelKlasse = hatBilder ? 'angebot-kachel has-bg-image' : 'angebot-kachel';
     let bildHtml = '';
     if (hatBilder) {
-        const bilder = angebot.bilder_urls.map((url, index) => `<img src="${url}" alt="${angebot.titel}" class="kachel-bild ${index === 0 ? 'active' : ''}">`).join('');
+        const bilder = angebot.bilder_urls.map((url, index) => `<img src="${url}" alt="Bild ${index + 1} von ${angebot.titel}" class="kachel-bild ${index === 0 ? 'active' : ''}">`).join('');
         const hatGalerie = angebot.bilder_urls.length > 1;
-        bildHtml = `<div class="kachel-bild-wrapper" data-has-gallery="${hatGalerie}">${bilder}</div>`;
+        bildHtml = `<div class="kachel-bild-wrapper" data-has-gallery="${hatGalerie}" role="img" aria-label="Bildergalerie für ${angebot.titel}">${bilder}</div>`;
     }
     return `
         <div class="${kachelKlasse}" data-id="${angebot.id}">
             ${bildHtml}
             <div class="kachel-content">
                 <div class="admin-only admin-controls">
-                    <button class="edit-btn" title="Bearbeiten">✏️</button>
-                    <button class="delete-btn" title="Löschen">🗑️</button>
+                    <button class="edit-btn" aria-label="Angebot ${angebot.titel} bearbeiten" title="Bearbeiten">✏️</button>
+                    <button class="delete-btn" aria-label="Angebot ${angebot.titel} löschen" title="Löschen">🗑️</button>
                 </div>
-                <div class="kachel-icon">${angebot.icon||'✨'}</div>
+                <div class="kachel-icon" aria-hidden="true">${angebot.icon||'✨'}</div>
                 <h3 class="kachel-titel">${angebot.titel}</h3>
                 <div class="kachel-meta-infos">
-                    <span class="kachel-info"><span class="info-icon">👤</span> ${angebot.betreuer}</span>
-                    <span class="kachel-info"><span class="info-icon">📍</span> ${angebot.ort}</span>
+                    <span class="kachel-info"><span class="info-icon" aria-hidden="true">👤</span> ${angebot.betreuer}</span>
+                    <span class="kachel-info"><span class="info-icon" aria-hidden="true">📍</span> ${angebot.ort}</span>
                 </div>
                 <p class="kachel-beschreibung">${angebot.beschreibung||''}</p>
             </div>
@@ -186,7 +230,7 @@ function showModal(angebot = null) {
         aktuellesIconVorschau.textContent = '❓';
         hiddenIconInput.value = '';
     }
-    editModal.showModal();
+    openModalWithFocus(editModal);
 }
 
 async function handleFormSubmit(event) {
@@ -200,8 +244,8 @@ async function handleFormSubmit(event) {
     const { error } = id
         ? await supabaseClient.from('angebote').update(angebotDaten).eq('id', id)
         : await supabaseClient.from('angebote').insert([angebotDaten]);
-    if (error) { alert('Fehler: ' + error.message); } 
-    else { editModal.close(); await ladeAngebote(); }
+    if (error) { alert('Fehler: ' + error.message); }
+    else { closeModalAndRestoreFocus(editModal); await ladeAngebote(); }
 }
 
 function populateIconPickerModal(filterKat = 'alle', suchbegriff = '') {
@@ -214,10 +258,21 @@ function populateIconPickerModal(filterKat = 'alle', suchbegriff = '') {
             const span = document.createElement('span');
             span.className = 'icon-option';
             span.textContent = icon.emoji;
+            span.setAttribute('role', 'button');
+            span.setAttribute('tabindex', '0');
+            span.setAttribute('aria-label', `Icon ${icon.emoji} auswählen`);
             span.onclick = () => {
                 hiddenIconInput.value = icon.emoji;
                 aktuellesIconVorschau.textContent = icon.emoji;
                 iconPickerModal.close();
+            };
+            span.onkeydown = (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    hiddenIconInput.value = icon.emoji;
+                    aktuellesIconVorschau.textContent = icon.emoji;
+                    iconPickerModal.close();
+                }
             };
             iconPickerGrid.appendChild(span);
         }
@@ -290,19 +345,19 @@ function initializeEventListeners() {
     themeToggleButton.onclick = handleThemeToggle;
     fullscreenToggleButton.onclick = toggleFullscreen;
     document.addEventListener('fullscreenchange', handleFullscreenChange);
-    loginButton.onclick = () => loginModal.showModal();
-    loginForm.querySelector('#login-abbrechen').onclick = () => loginModal.close();
+    loginButton.onclick = () => openModalWithFocus(loginModal);
+    loginForm.querySelector('#login-abbrechen').onclick = () => closeModalAndRestoreFocus(loginModal);
     logoutButton.onclick = async () => { await supabaseClient.auth.signOut(); await checkUserStatus(); };
     loginForm.onsubmit = async (e) => {
         e.preventDefault();
         const { email, password } = e.target.elements;
         const { error } = await supabaseClient.auth.signInWithPassword({ email: email.value, password: password.value });
-        if (error) { alert('Login fehlgeschlagen: ' + error.message); } 
-        else { loginModal.close(); await checkUserStatus(); }
+        if (error) { alert('Login fehlgeschlagen: ' + error.message); }
+        else { closeModalAndRestoreFocus(loginModal); await checkUserStatus(); }
     };
     neuButton.onclick = () => showModal();
     editForm.onsubmit = handleFormSubmit;
-    editModal.querySelector('#abbrechen-button').onclick = () => editModal.close();
+    editModal.querySelector('#abbrechen-button').onclick = () => closeModalAndRestoreFocus(editModal);
     bilderUploadInput.onchange = handleBildUpload;
     bilderVorschau.onclick = (e) => {
         if (e.target.classList.contains('bild-loeschen-btn')) {
@@ -314,13 +369,22 @@ function initializeEventListeners() {
     iconAendernBtn.onclick = () => {
         populateKategorieFilter();
         populateIconPickerModal();
-        iconPickerModal.showModal();
+        openModalWithFocus(iconPickerModal);
     };
-    iconPickerSchliessen.onclick = () => iconPickerModal.close();
+    iconPickerSchliessen.onclick = () => closeModalAndRestoreFocus(iconPickerModal);
     iconSuche.oninput = () => {
         const aktiveKat = document.querySelector('.kategorie-btn.active')?.dataset.kat || 'alle';
         populateIconPickerModal(aktiveKat, iconSuche.value);
     };
+
+    // ESC-Taste für Modals
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            if (editModal.open) closeModalAndRestoreFocus(editModal);
+            if (loginModal.open) closeModalAndRestoreFocus(loginModal);
+            if (iconPickerModal.open) closeModalAndRestoreFocus(iconPickerModal);
+        }
+    });
 }
 
 // --- START ---
