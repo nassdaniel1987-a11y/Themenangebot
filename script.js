@@ -49,6 +49,55 @@ const hiddenIconInput = document.getElementById('icon');
 let aktuelleBilderUrls = [];
 let previousFocusElement = null;
 
+// XSS-Schutz: HTML-Escaping für User-Input
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Debounce-Funktion für Performance
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
+// Toast-Notification-System
+function showToast(message, type = 'success') {
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.textContent = message;
+    toast.setAttribute('role', 'alert');
+    toast.setAttribute('aria-live', 'polite');
+    document.body.appendChild(toast);
+
+    setTimeout(() => toast.classList.add('show'), 10);
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+}
+
+// Loading-State Management
+function setLoading(isLoading) {
+    const grid = document.getElementById('angebote-grid');
+    if (isLoading) {
+        grid.classList.add('loading');
+        grid.setAttribute('aria-busy', 'true');
+    } else {
+        grid.classList.remove('loading');
+        grid.setAttribute('aria-busy', 'false');
+    }
+}
+
 // Fokus-Management für Accessibility
 function trapFocusInModal(modal) {
     const focusableElements = modal.querySelectorAll(
@@ -115,13 +164,22 @@ function handleFullscreenChange() {
 }
 
 async function ladeAngebote() {
-    const { data, error } = await supabaseClient.from('angebote').select('*').order('created_at', { ascending: false });
-    if (error) { console.error('Fehler beim Laden:', error); return; }
-    alleAngebote = data;
-    erstelleSeiten();
-    if (paginationInterval) clearInterval(paginationInterval);
-    if (seiten.length > 1) { startePagination(); } 
-    else { zeigeSeite(0); }
+    setLoading(true);
+    try {
+        const { data, error } = await supabaseClient.from('angebote').select('*').order('created_at', { ascending: false });
+        if (error) {
+            console.error('Fehler beim Laden:', error);
+            showToast('Fehler beim Laden der Angebote', 'error');
+            return;
+        }
+        alleAngebote = data || [];
+        erstelleSeiten();
+        if (paginationInterval) clearInterval(paginationInterval);
+        if (seiten.length > 1) { startePagination(); }
+        else { zeigeSeite(0); }
+    } finally {
+        setLoading(false);
+    }
 }
 
 function erstelleSeiten() {
@@ -133,9 +191,44 @@ function erstelleSeiten() {
 
 function zeigeSeite(seiteIndex) {
     if (!seiten[seiteIndex] && seiten.length > 0) seiteIndex = 0;
-    angeboteGrid.innerHTML = seiten.length === 0 ? '' : seiten[seiteIndex].map(erstelleKachelHTML).join('');
+
+    // Placeholder für leere Liste
+    if (seiten.length === 0) {
+        angeboteGrid.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-icon" aria-hidden="true">📚</div>
+                <h2>Noch keine Angebote verfügbar</h2>
+                <p>Erstellen Sie Ihr erstes Angebot, indem Sie auf den + Button klicken.</p>
+            </div>
+        `;
+        updatePaginationIndicator(0, 0);
+        return;
+    }
+
+    angeboteGrid.innerHTML = seiten[seiteIndex].map(erstelleKachelHTML).join('');
     addAdminEventListeners();
     initialisiereGalerien();
+    updatePaginationIndicator(seiteIndex + 1, seiten.length);
+}
+
+function updatePaginationIndicator(aktuelleSeite, gesamtSeiten) {
+    let indicator = document.getElementById('pagination-indicator');
+
+    if (gesamtSeiten <= 1) {
+        // Kein Indikator bei nur einer Seite
+        if (indicator) indicator.remove();
+        return;
+    }
+
+    if (!indicator) {
+        indicator = document.createElement('div');
+        indicator.id = 'pagination-indicator';
+        indicator.setAttribute('aria-live', 'polite');
+        indicator.setAttribute('aria-atomic', 'true');
+        document.body.appendChild(indicator);
+    }
+
+    indicator.textContent = `Seite ${aktuelleSeite} von ${gesamtSeiten}`;
 }
 
 function startePagination() {
@@ -154,27 +247,35 @@ function startePagination() {
 function erstelleKachelHTML(angebot) {
     const hatBilder = angebot.bilder_urls && angebot.bilder_urls.length > 0;
     const kachelKlasse = hatBilder ? 'angebot-kachel has-bg-image' : 'angebot-kachel';
+
+    // XSS-Schutz: Alle User-Inputs escapen
+    const safeTitel = escapeHtml(angebot.titel);
+    const safeBetreuer = escapeHtml(angebot.betreuer);
+    const safeOrt = escapeHtml(angebot.ort);
+    const safeBeschreibung = escapeHtml(angebot.beschreibung);
+    const safeIcon = escapeHtml(angebot.icon) || '✨';
+
     let bildHtml = '';
     if (hatBilder) {
-        const bilder = angebot.bilder_urls.map((url, index) => `<img src="${url}" alt="Bild ${index + 1} von ${angebot.titel}" class="kachel-bild ${index === 0 ? 'active' : ''}">`).join('');
+        const bilder = angebot.bilder_urls.map((url, index) => `<img src="${escapeHtml(url)}" alt="Bild ${index + 1} von ${safeTitel}" class="kachel-bild ${index === 0 ? 'active' : ''}">`).join('');
         const hatGalerie = angebot.bilder_urls.length > 1;
-        bildHtml = `<div class="kachel-bild-wrapper" data-has-gallery="${hatGalerie}" role="img" aria-label="Bildergalerie für ${angebot.titel}">${bilder}</div>`;
+        bildHtml = `<div class="kachel-bild-wrapper" data-has-gallery="${hatGalerie}" role="img" aria-label="Bildergalerie für ${safeTitel}">${bilder}</div>`;
     }
     return `
-        <div class="${kachelKlasse}" data-id="${angebot.id}">
+        <div class="${kachelKlasse}" data-id="${escapeHtml(angebot.id)}">
             ${bildHtml}
             <div class="kachel-content">
                 <div class="admin-only admin-controls">
-                    <button class="edit-btn" aria-label="Angebot ${angebot.titel} bearbeiten" title="Bearbeiten">✏️</button>
-                    <button class="delete-btn" aria-label="Angebot ${angebot.titel} löschen" title="Löschen">🗑️</button>
+                    <button class="edit-btn" aria-label="Angebot ${safeTitel} bearbeiten" title="Bearbeiten">✏️</button>
+                    <button class="delete-btn" aria-label="Angebot ${safeTitel} löschen" title="Löschen">🗑️</button>
                 </div>
-                <div class="kachel-icon" aria-hidden="true">${angebot.icon||'✨'}</div>
-                <h3 class="kachel-titel">${angebot.titel}</h3>
+                <div class="kachel-icon" aria-hidden="true">${safeIcon}</div>
+                <h3 class="kachel-titel">${safeTitel}</h3>
                 <div class="kachel-meta-infos">
-                    <span class="kachel-info"><span class="info-icon" aria-hidden="true">👤</span> ${angebot.betreuer}</span>
-                    <span class="kachel-info"><span class="info-icon" aria-hidden="true">📍</span> ${angebot.ort}</span>
+                    <span class="kachel-info"><span class="info-icon" aria-hidden="true">👤</span> ${safeBetreuer}</span>
+                    <span class="kachel-info"><span class="info-icon" aria-hidden="true">📍</span> ${safeOrt}</span>
                 </div>
-                <p class="kachel-beschreibung">${angebot.beschreibung||''}</p>
+                <p class="kachel-beschreibung">${safeBeschreibung}</p>
             </div>
         </div>
     `;
@@ -189,11 +290,19 @@ async function checkUserStatus() {
     await ladeAngebote();
 }
 
+// Memory Leak Fix: Galerie-Intervalle sauber aufräumen
+let galerieIntervalle = [];
+
 function initialisiereGalerien() {
+    // Alte Intervalle aufräumen
+    galerieIntervalle.forEach(interval => clearInterval(interval));
+    galerieIntervalle = [];
+
     document.querySelectorAll('.kachel-bild-wrapper[data-has-gallery="true"]').forEach(galerie => {
         const bilder = galerie.querySelectorAll('.kachel-bild');
         if (bilder.length <= 1) return;
         let aktuellerIndex = 0, intervalId = null;
+
         const starteInterval = () => {
             if (intervalId) clearInterval(intervalId);
             intervalId = setInterval(() => {
@@ -201,10 +310,16 @@ function initialisiereGalerien() {
                 aktuellerIndex = (aktuellerIndex + 1) % bilder.length;
                 bilder[aktuellerIndex].classList.add('active');
             }, 4000);
+            galerieIntervalle.push(intervalId);
         };
+
         const kachel = galerie.closest('.angebot-kachel');
-        kachel.addEventListener('mouseenter', () => clearInterval(intervalId));
-        kachel.addEventListener('mouseleave', starteInterval);
+        const mouseEnterHandler = () => clearInterval(intervalId);
+        const mouseLeaveHandler = () => starteInterval();
+
+        kachel.addEventListener('mouseenter', mouseEnterHandler);
+        kachel.addEventListener('mouseleave', mouseLeaveHandler);
+
         starteInterval();
     });
 }
@@ -237,19 +352,60 @@ function showModal(angebot = null) {
     openModalWithFocus(editModal);
 }
 
+// Input-Validierung mit Längenlimits
+function validateInput(value, maxLength, fieldName) {
+    const trimmed = value.trim();
+    if (!trimmed) {
+        showToast(`${fieldName} darf nicht leer sein`, 'error');
+        return null;
+    }
+    if (trimmed.length > maxLength) {
+        showToast(`${fieldName} ist zu lang (max. ${maxLength} Zeichen)`, 'error');
+        return null;
+    }
+    return trimmed;
+}
+
 async function handleFormSubmit(event) {
     event.preventDefault();
+
+    // Input-Validierung
+    const titel = validateInput(editForm.querySelector('#titel').value, 100, 'Titel');
+    const betreuer = validateInput(editForm.querySelector('#betreuer').value, 100, 'Betreuer');
+    const ort = validateInput(editForm.querySelector('#ort').value, 100, 'Ort');
+    const beschreibung = editForm.querySelector('#beschreibung').value.trim();
+    const icon = editForm.querySelector('#icon').value;
+
+    if (!titel || !betreuer || !ort) return;
+
+    if (beschreibung.length > 500) {
+        showToast('Beschreibung ist zu lang (max. 500 Zeichen)', 'error');
+        return;
+    }
+
+    if (!icon) {
+        showToast('Bitte wählen Sie ein Icon aus', 'error');
+        return;
+    }
+
     const id = editForm.querySelector('#angebot-id').value;
     const angebotDaten = {
-        titel: editForm.querySelector('#titel').value, betreuer: editForm.querySelector('#betreuer').value,
-        ort: editForm.querySelector('#ort').value, icon: editForm.querySelector('#icon').value,
-        beschreibung: editForm.querySelector('#beschreibung').value, bilder_urls: aktuelleBilderUrls,
+        titel, betreuer, ort, icon, beschreibung, bilder_urls: aktuelleBilderUrls,
     };
+
+    setLoading(true);
     const { error } = id
         ? await supabaseClient.from('angebote').update(angebotDaten).eq('id', id)
         : await supabaseClient.from('angebote').insert([angebotDaten]);
-    if (error) { alert('Fehler: ' + error.message); }
-    else { closeModalAndRestoreFocus(editModal); await ladeAngebote(); }
+    setLoading(false);
+
+    if (error) {
+        showToast('Fehler beim Speichern: ' + error.message, 'error');
+    } else {
+        showToast(id ? 'Angebot erfolgreich aktualisiert!' : 'Angebot erfolgreich erstellt!', 'success');
+        closeModalAndRestoreFocus(editModal);
+        await ladeAngebote();
+    }
 }
 
 function populateIconPickerModal(filterKat = 'alle', suchbegriff = '') {
@@ -301,27 +457,131 @@ function populateKategorieFilter() {
     });
 }
 
+// Dateinamen-Sanitization für sichere Uploads
+function sanitizeFileName(fileName) {
+    // Nur Dateiname ohne Pfad
+    const baseName = fileName.replace(/^.*[\\\/]/, '');
+    // Extension extrahieren
+    const parts = baseName.split('.');
+    const extension = parts.length > 1 ? parts.pop() : '';
+    const name = parts.join('.');
+    // Nur alphanumerische Zeichen, Bindestriche und Unterstriche
+    const safeName = name.replace(/[^a-zA-Z0-9-_]/g, '_').substring(0, 50);
+    return extension ? `${safeName}.${extension}` : safeName;
+}
+
+// Bildkompression für kleinere Dateigrößen
+async function compressImage(file, maxSizeMB = 2) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                let width = img.width;
+                let height = img.height;
+
+                // Max. Breite/Höhe: 1920px
+                const maxDimension = 1920;
+                if (width > maxDimension || height > maxDimension) {
+                    if (width > height) {
+                        height = (height / width) * maxDimension;
+                        width = maxDimension;
+                    } else {
+                        width = (width / height) * maxDimension;
+                        height = maxDimension;
+                    }
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+
+                canvas.toBlob((blob) => {
+                    if (blob) {
+                        resolve(new File([blob], file.name, { type: 'image/jpeg', lastModified: Date.now() }));
+                    } else {
+                        reject(new Error('Kompression fehlgeschlagen'));
+                    }
+                }, 'image/jpeg', 0.85);
+            };
+            img.onerror = reject;
+            img.src = e.target.result;
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+}
+
 async function handleBildUpload(event) {
-    const files = event.target.files;
-    if (!files || files.length === 0) return;
-    if (aktuelleBilderUrls.length + files.length > 3) { alert("Maximal 3 Bilder."); return; }
-    for (const file of files) {
-        const fileName = `public/${Date.now()}-${file.name}`;
-        const { error } = await supabaseClient.storage.from(BUCKET_NAME).upload(fileName, file);
-        if (error) { console.error('Upload Fehler:', error); alert("Fehler beim Upload."); continue; }
-        const { data } = supabaseClient.storage.from(BUCKET_NAME).getPublicUrl(fileName);
-        if (data?.publicUrl) { aktuelleBilderUrls.push(data.publicUrl); }
+    const files = Array.from(event.target.files || []);
+    if (files.length === 0) return;
+
+    const verfuegbarePlaetze = 3 - aktuelleBilderUrls.length;
+    if (files.length > verfuegbarePlaetze) {
+        showToast(`Maximal 3 Bilder erlaubt. Sie können noch ${verfuegbarePlaetze} Bild(er) hochladen.`, 'error');
+        return;
     }
+
+    for (const file of files) {
+        // Dateityp-Validierung
+        if (!file.type.startsWith('image/')) {
+            showToast(`"${file.name}" ist kein gültiges Bild`, 'error');
+            continue;
+        }
+
+        // Dateigröße-Validierung (5MB max vor Kompression)
+        if (file.size > 5 * 1024 * 1024) {
+            showToast(`"${file.name}" ist zu groß (max. 5MB)`, 'error');
+            continue;
+        }
+
+        try {
+            // Bild komprimieren
+            const compressedFile = await compressImage(file);
+
+            // Sicherer Dateiname
+            const safeName = sanitizeFileName(file.name);
+            const fileName = `public/${Date.now()}-${safeName}`;
+
+            // Upload mit Feedback
+            const { error } = await supabaseClient.storage.from(BUCKET_NAME).upload(fileName, compressedFile);
+
+            if (error) {
+                console.error('Upload Fehler:', error);
+                showToast(`Fehler beim Hochladen von "${file.name}"`, 'error');
+                continue;
+            }
+
+            const { data } = supabaseClient.storage.from(BUCKET_NAME).getPublicUrl(fileName);
+            if (data?.publicUrl) {
+                aktuelleBilderUrls.push(data.publicUrl);
+            }
+        } catch (err) {
+            console.error('Kompressionsfehler:', err);
+            showToast(`Fehler bei der Verarbeitung von "${file.name}"`, 'error');
+        }
+    }
+
     updateBilderVorschau();
     bilderUploadInput.value = '';
 }
 
 function updateBilderVorschau() {
     bilderVorschau.innerHTML = '';
+
+    // Bilder-Counter anzeigen
+    const counter = document.createElement('div');
+    counter.className = 'bilder-counter';
+    counter.textContent = `${aktuelleBilderUrls.length}/3 Bilder`;
+    counter.setAttribute('aria-live', 'polite');
+    bilderVorschau.appendChild(counter);
+
     aktuelleBilderUrls.forEach((url, index) => {
         const wrapper = document.createElement('div');
         wrapper.className = 'vorschau-bild-wrapper';
-        wrapper.innerHTML = `<img src="${url}" class="vorschau-bild"><button type="button" class="bild-loeschen-btn" data-index="${index}">&times;</button>`;
+        wrapper.innerHTML = `<img src="${url}" class="vorschau-bild" alt="Vorschau Bild ${index + 1}"><button type="button" class="bild-loeschen-btn" data-index="${index}" aria-label="Bild ${index + 1} entfernen">&times;</button>`;
         bilderVorschau.appendChild(wrapper);
     });
 }
@@ -376,10 +636,14 @@ function initializeEventListeners() {
         openModalWithFocus(iconPickerModal);
     };
     iconPickerSchliessen.onclick = () => closeModalAndRestoreFocus(iconPickerModal);
-    iconSuche.oninput = () => {
+
+    // Debounced Icon-Suche für bessere Performance
+    const debouncedIconSearch = debounce(() => {
         const aktiveKat = document.querySelector('.kategorie-btn.active')?.dataset.kat || 'alle';
         populateIconPickerModal(aktiveKat, iconSuche.value);
-    };
+    }, 300);
+
+    iconSuche.oninput = debouncedIconSearch;
 
     // ESC-Taste für Modals
     document.addEventListener('keydown', (e) => {
