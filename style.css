@@ -1,0 +1,453 @@
+/* --- GRUNDEINSTELLUNGEN & FARBPALETTE --- */
+:root {
+    --primary-color: #4A90E2;
+    --background-color: #F5F7FA;
+    --card-background: #FFFFFF;
+    --text-color: #333D4D;
+    --text-light: #7A8B99;
+    --danger-color: #D0021B;
+    --shadow: 0px 10px 20px rgba(74, 144, 226, 0.1);
+    --font-family: 'Poppins', sans-serif;
+    --border-color: #e2e8f0;
+}
+
+/* --- DARK MODE FARBEN --- */
+body.dark-theme {
+    --background-color: #1a202c;
+    --card-background: #2d3748;
+    --text-color: #e2e8f0;
+    --text-light: #a0aec0;
+    --danger-color: #f56565;
+    --shadow: 0px 10px 20px rgba(0, 0, 0, 0.2);
+    --border-color: #4a5568;
+}
+
+/* --- ALLGEMEINES LAYOUT --- */
+body {
+    font-family: var(--font-family);
+    background-color: var(--background-color);
+    color: var(--text-color);
+    margin: 0;
+    padding: 1.5rem;
+    transition: background-color 0.3s, color 0.3s;
+    overflow: hidden;
+    font-size: 17px;
+}
+
+.site-header {
+    text-align: center;
+    margin-bottom: 3rem;
+    position: relative;
+}
+
+.site-header h1 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+
+.site-header p {
+    font-size: 1.2rem;
+    color: var(--text-light);
+    margin-top: 0;
+}
+
+#controls-bereich {
+    position: absolute;
+    top: 0;
+    right: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+#theme-toggle,
+#fullscreen-toggle {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 5px;
+    line-height: 1;
+    color: var(--text-color);
+}
+
+.auth-button {
+    background-color: var(--card-background);
+    border: 1px solid var(--border-color);
+    padding: 8px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-family: var(--font-family);
+    color: var(--text-color);
+    transition: background-color 0.2s;
+}
+
+.auth-button:hover {
+    background-color: var(--background-color);
+}
+
+/* --- KACHEL-LAYOUT (CSS GRID FÜR TV) --- */
+#angebote-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    grid-template-rows: 1fr 1fr;
+    gap: 2rem;
+    transition: opacity 0.5s ease-in-out;
+    height: calc(100vh - 12rem);
+    overflow: hidden;
+}
+
+.angebot-kachel {
+    background-color: var(--card-background);
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    transition: all 0.3s ease-in-out;
+    min-width: 280px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+}
+
+.angebot-kachel:hover {
+    transform: translateY(-8px);
+    box-shadow: 0px 15px 30px rgba(74, 144, 226, 0.2);
+}
+
+/* --- BILDER-GALERIE STYLES (HINTERGRUND) --- */
+.kachel-bild-wrapper {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+}
+
+.kachel-bild-wrapper::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.8) 0%, rgba(0, 0, 0, 0.1) 50%, rgba(0, 0, 0, 0.3) 100%);
+}
+
+.kachel-bild {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    position: absolute;
+    top: 0;
+    left: 0;
+    opacity: 0;
+    transition: opacity 1.2s ease-in-out;
+}
+
+.kachel-bild.active {
+    opacity: 1;
+}
+
+/* --- KACHEL-INHALT --- */
+.kachel-content {
+    padding: 1.5rem;
+    text-align: center;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    position: relative;
+    z-index: 2;
+}
+
+.angebot-kachel.has-bg-image .kachel-content {
+    color: #ffffff;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+}
+
+.kachel-icon {
+    font-size: 4rem;
+    line-height: 1;
+    margin-bottom: 1rem;
+}
+
+.kachel-titel {
+    font-size: 1.4rem;
+    font-weight: 600;
+    margin: 0.5rem 0;
+}
+
+/* NEU: Styling für die hervorgehobenen Meta-Infos */
+.kachel-meta-infos {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 1rem;
+}
+
+.kachel-info {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    color: var(--text-light);
+    margin: 0; /* Margin wird vom Wrapper gesteuert */
+    font-weight: 600; /* Hebt die Schrift leicht hervor */
+}
+
+.angebot-kachel.has-bg-image .kachel-info {
+    color: rgba(255, 255, 255, 0.9);
+    font-weight: 600;
+}
+
+.info-icon {
+    margin-right: 0.5em;
+    font-size: 1.2em;
+}
+
+.kachel-beschreibung {
+    font-size: 0.95rem;
+    margin-top: 1rem;
+    flex-grow: 1;
+}
+
+/* --- ADMIN-ELEMENTE --- */
+/* ... (Rest der CSS-Datei ist unverändert) ... */
+.hidden { display: none !important; }
+.admin-only { display: none; }
+body.is-admin .admin-only { display: flex; }
+
+.admin-controls {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    gap: 8px;
+    background-color: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(4px);
+    padding: 5px;
+    border-radius: 8px;
+    z-index: 3;
+}
+body.dark-theme .admin-controls {
+    background-color: rgba(45, 55, 72, 0.8);
+}
+
+.admin-controls button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1.2rem;
+    transition: transform 0.2s;
+}
+.admin-controls button:hover { transform: scale(1.2); }
+
+#neu-button {
+    display: none;
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    font-size: 2.5rem;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: var(--shadow);
+    justify-content: center;
+    align-items: center;
+    z-index: 10;
+}
+body.is-admin #neu-button { display: flex; }
+
+/* --- MODAL / DIALOG FENSTER --- */
+dialog {
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 0 2em rgba(0,0,0,0.2);
+    padding: 2em;
+    width: 90%;
+    max-width: 500px;
+    background-color: var(--card-background);
+    color: var(--text-color);
+}
+dialog::backdrop {
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(3px);
+}
+dialog form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+dialog label {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--text-light);
+}
+dialog input, dialog textarea {
+    padding: 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-family: var(--font-family);
+    font-size: 1rem;
+    background-color: var(--background-color);
+    color: var(--text-color);
+}
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 20px;
+}
+.modal-actions button {
+    padding: 10px 20px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    font-family: var(--font-family);
+    font-weight: 600;
+    transition: background-color 0.2s;
+}
+.modal-actions button[type="submit"] {
+    background-color: var(--primary-color);
+    color: white;
+}
+.modal-actions button[type="button"] {
+    background-color: var(--border-color);
+    color: var(--text-color);
+}
+.modal-actions button[type="button"]:hover {
+    background-color: #ccc;
+}
+body.dark-theme .modal-actions button[type="button"]:hover {
+    background-color: #555;
+}
+
+/* --- ICON & BILD-UPLOAD STYLES --- */
+.icon-auswahl-bereich {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background-color: var(--background-color);
+}
+#aktuelles-icon-vorschau {
+    font-size: 2.5rem;
+}
+#icon-aendern-btn {
+    padding: 10px 15px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    font-family: var(--font-family);
+    font-weight: 600;
+    background-color: var(--primary-color);
+    color: white;
+}
+#bilder-vorschau {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+.vorschau-bild-wrapper {
+    position: relative;
+}
+.vorschau-bild {
+    width: 70px;
+    height: 70px;
+    border-radius: 8px;
+    object-fit: cover;
+}
+.bild-loeschen-btn {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background: var(--danger-color);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+    font-weight: bold;
+    line-height: 20px;
+    text-align: center;
+    font-size: 14px;
+}
+
+/* --- ICON PICKER MODAL STYLES --- */
+#icon-picker-modal {
+    max-width: 800px;
+    width: 90%;
+    height: 80vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.icon-picker-header {
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+#icon-suche {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 1rem;
+    background-color: var(--background-color);
+    color: var(--text-color);
+    box-sizing: border-box;
+}
+
+#icon-kategorien {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 1rem 0;
+}
+
+.kategorie-btn {
+    padding: 8px 12px;
+    border: 1px solid var(--border-color);
+    background-color: var(--card-background);
+    color: var(--text-color);
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.kategorie-btn:hover {
+    background-color: var(--background-color);
+}
+.kategorie-btn.active {
+    background-color: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+
+#icon-picker-grid {
+    flex-grow: 1;
+    overflow-y: auto;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+    gap: 15px;
+    padding-top: 1rem;
+}
+
+.icon-option {
+    font-size: 2.5rem;
+    cursor: pointer;
+    padding: 5px;
+    border-radius: 8px;
+    transition: all 0.2s;
+    text-align: center;
+}
+.icon-option:hover {
+    background-color: var(--background-color);
+    transform: scale(1.1);
+}

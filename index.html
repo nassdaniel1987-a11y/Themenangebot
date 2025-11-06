@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Themenangebot Grundschule</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <header class="site-header">
+        <h1>Unsere Angebote am Mittwoch</h1>
+        <p>Jeden Mittwoch von 14:30 – 16:00 Uhr</p>
+        <div id="controls-bereich">
+            <button id="theme-toggle" title="Design umschalten">☀️</button>
+            <button id="fullscreen-toggle" title="Vollbild umschalten">↗️</button>
+            <button id="login-button" class="auth-button">Admin Login</button>
+            <button id="logout-button" class="auth-button hidden">Logout</button>
+        </div>
+    </header>
+
+    <main id="angebote-grid">
+        </main>
+    
+    <button id="neu-button" class="admin-only">+</button>
+
+    <dialog id="edit-modal">
+        <form id="edit-form">
+            <h2 id="modal-titel">Angebot bearbeiten</h2>
+            <input type="hidden" id="angebot-id" name="id">
+            
+            <label for="titel">Titel:</label>
+            <input type="text" id="titel" name="titel" required>
+
+            <label for="betreuer">Betreuer:</label>
+            <input type="text" id="betreuer" name="betreuer" required>
+
+            <label for="ort">Ort:</label>
+            <input type="text" id="ort" name="ort" required>
+
+            <label for="beschreibung">Beschreibung:</label>
+            <textarea id="beschreibung" name="beschreibung" rows="3"></textarea>
+
+            <label>Icon:</label>
+            <div class="icon-auswahl-bereich">
+                <span id="aktuelles-icon-vorschau">❓</span>
+                <button type="button" id="icon-aendern-btn">Icon ändern</button>
+            </div>
+            <input type="hidden" id="icon" name="icon" required>
+
+            <label for="bilder-upload">Optionale Bilder (max. 3):</label>
+            <input type="file" id="bilder-upload" multiple accept="image/*">
+            <div id="bilder-vorschau"></div>
+            
+            <div class="modal-actions">
+                <button type="button" id="abbrechen-button">Abbrechen</button>
+                <button type="submit" id="speichern-button">Speichern</button>
+            </div>
+        </form>
+    </dialog>
+
+    <dialog id="icon-picker-modal">
+        <div class="icon-picker-header">
+            <h2>Icon auswählen</h2>
+            <input type="text" id="icon-suche" placeholder="Suche nach 'Ball', 'Musik', 'Tier'...">
+        </div>
+        <div id="icon-kategorien">
+            </div>
+        <div id="icon-picker-grid">
+            </div>
+        <div class="modal-actions">
+            <button type="button" id="icon-picker-schliessen">Schließen</button>
+        </div>
+    </dialog>
+
+    <dialog id="login-modal">
+        <form id="login-form">
+            <h2>Admin Login</h2>
+            <label for="email">E-Mail:</label>
+            <input type="email" id="email" name="email" required>
+            <label for="password">Passwort:</label>
+            <input type="password" id="password" name="password" required>
+            <div class="modal-actions">
+                <button type="button" id="login-abbrechen">Abbrechen</button>
+                <button type="submit">Login</button>
+            </div>
+        </form>
+    </dialog>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="script.js"></script>
+</body>
+</html>
