@@ -215,18 +215,22 @@ function showModal(angebot = null) {
     bilderVorschau.innerHTML = '';
     if (angebot) {
         modalTitel.textContent = 'Angebot bearbeiten';
-        Object.keys(angebot).forEach(key => {
-            const el = editForm.querySelector(`#${key}`);
-            if (el) el.value = angebot[key];
-        });
+        // ID explizit setzen (das Input-Feld heißt 'angebot-id', nicht 'id')
+        document.getElementById('angebot-id').value = angebot.id || '';
+        // Restliche Felder setzen
+        document.getElementById('titel').value = angebot.titel || '';
+        document.getElementById('betreuer').value = angebot.betreuer || '';
+        document.getElementById('ort').value = angebot.ort || '';
+        document.getElementById('beschreibung').value = angebot.beschreibung || '';
+        document.getElementById('icon').value = angebot.icon || '';
         aktuellesIconVorschau.textContent = angebot.icon || '❓';
-        hiddenIconInput.value = angebot.icon || '';
         if (angebot.bilder_urls) {
             aktuelleBilderUrls = [...angebot.bilder_urls];
             updateBilderVorschau();
         }
     } else {
         modalTitel.textContent = 'Neues Angebot erstellen';
+        document.getElementById('angebot-id').value = '';
         aktuellesIconVorschau.textContent = '❓';
         hiddenIconInput.value = '';
     }
