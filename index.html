@@ -12,6 +12,7 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <a href="#angebote-grid" class="skip-to-main">Direkt zum Inhalt springen</a>
 
     <header class="site-header">
         <h1>Unsere Angebote am Mittwoch</h1>
@@ -34,17 +35,17 @@
             <h2 id="modal-titel">Angebot bearbeiten</h2>
             <input type="hidden" id="angebot-id" name="id">
             
-            <label for="titel">Titel:</label>
-            <input type="text" id="titel" name="titel" required>
+            <label for="titel">Titel (max. 100 Zeichen):</label>
+            <input type="text" id="titel" name="titel" required maxlength="100">
 
-            <label for="betreuer">Betreuer:</label>
-            <input type="text" id="betreuer" name="betreuer" required>
+            <label for="betreuer">Betreuer (max. 100 Zeichen):</label>
+            <input type="text" id="betreuer" name="betreuer" required maxlength="100">
 
-            <label for="ort">Ort:</label>
-            <input type="text" id="ort" name="ort" required>
+            <label for="ort">Ort (max. 100 Zeichen):</label>
+            <input type="text" id="ort" name="ort" required maxlength="100">
 
-            <label for="beschreibung">Beschreibung:</label>
-            <textarea id="beschreibung" name="beschreibung" rows="3"></textarea>
+            <label for="beschreibung">Beschreibung (max. 500 Zeichen):</label>
+            <textarea id="beschreibung" name="beschreibung" rows="3" maxlength="500"></textarea>
 
             <label>Icon:</label>
             <div class="icon-auswahl-bereich">
@@ -53,7 +54,7 @@
             </div>
             <input type="hidden" id="icon" name="icon" required>
 
-            <label for="bilder-upload">Optionale Bilder (max. 3):</label>
+            <label for="bilder-upload">Optionale Bilder (max. 3, max. 5MB pro Bild):</label>
             <input type="file" id="bilder-upload" multiple accept="image/*">
             <div id="bilder-vorschau"></div>
             
