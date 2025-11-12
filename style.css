@@ -30,8 +30,13 @@ body {
     margin: 0;
     padding: 1.5rem;
     transition: background-color 0.3s, color 0.3s;
-    overflow: hidden;
+    overflow-x: hidden;
+    overflow-y: auto;
     font-size: 17px;
+    /* Fix für iOS/iPad Viewport-Probleme */
+    -webkit-overflow-scrolling: touch;
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
 }
 
 /* --- FOCUS STYLES FÜR ACCESSIBILITY --- */
@@ -119,7 +124,8 @@ select:focus-visible {
     gap: 2rem;
     transition: opacity 0.5s ease-in-out;
     height: calc(100vh - 12rem);
-    overflow: hidden;
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 .angebot-kachel {
@@ -285,6 +291,16 @@ dialog {
     max-width: 500px;
     background-color: var(--card-background);
     color: var(--text-color);
+    /* Bessere Positionierung für mobile Geräte */
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    margin: 0;
+    max-height: 90vh;
+    max-height: 90dvh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
 }
 dialog::backdrop {
     background: rgba(0, 0, 0, 0.6);
@@ -397,9 +413,17 @@ body.dark-theme .modal-actions button[type="button"]:hover {
 #icon-picker-modal {
     max-width: 800px;
     width: 90%;
-    height: 80vh;
+    max-height: 80vh;
+    max-height: 80dvh; /* Dynamic Viewport Height für bessere mobile Unterstützung */
     display: flex;
     flex-direction: column;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    margin: 0;
+    padding: 1.5rem;
+    overflow: hidden;
 }
 
 .icon-picker-header {
@@ -630,5 +654,151 @@ body.dark-theme .modal-actions button[type="button"]:hover {
 
     .kachel-bild {
         transition: none;
+    }
+}
+
+/* --- TABLET & MOBILE OPTIMIERUNGEN --- */
+@media (max-width: 1024px) {
+    /* iPad und kleinere Tablets */
+    body {
+        padding: 1rem;
+        font-size: 16px;
+    }
+
+    .site-header h1 {
+        font-size: 2rem;
+    }
+
+    .site-header p {
+        font-size: 1rem;
+    }
+
+    #controls-bereich {
+        position: static;
+        justify-content: center;
+        margin-top: 1rem;
+    }
+
+    #angebote-grid {
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        grid-template-rows: auto;
+        height: auto;
+        min-height: calc(100vh - 15rem);
+        gap: 1.5rem;
+    }
+
+    .angebot-kachel {
+        min-height: 280px;
+    }
+
+    #neu-button {
+        bottom: 20px;
+        right: 20px;
+        width: 50px;
+        height: 50px;
+        font-size: 2rem;
+    }
+
+    dialog {
+        width: 95%;
+        padding: 1.5em;
+        max-height: 95vh;
+        max-height: 95dvh;
+    }
+
+    #icon-picker-modal {
+        width: 95%;
+        max-height: 90vh;
+        max-height: 90dvh;
+        padding: 1rem;
+    }
+
+    #icon-picker-grid {
+        grid-template-columns: repeat(auto-fill, minmax(50px, 1fr));
+        gap: 10px;
+    }
+
+    .icon-option {
+        font-size: 2rem;
+    }
+}
+
+@media (max-width: 768px) {
+    /* Smartphones im Landscape und kleine Tablets */
+    body {
+        padding: 0.75rem;
+    }
+
+    .site-header {
+        margin-bottom: 1.5rem;
+    }
+
+    #angebote-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+        min-height: auto;
+    }
+
+    .angebot-kachel {
+        min-height: 250px;
+    }
+
+    #icon-picker-modal {
+        padding: 0.75rem;
+    }
+
+    .icon-picker-header {
+        padding-bottom: 0.75rem;
+    }
+
+    #icon-kategorien {
+        padding: 0.75rem 0;
+        gap: 6px;
+    }
+
+    .kategorie-btn {
+        padding: 6px 10px;
+        font-size: 0.9rem;
+    }
+}
+
+/* --- TOUCH-OPTIMIERUNGEN FÜR MOBILE GERÄTE --- */
+@media (hover: none) and (pointer: coarse) {
+    /* Für Touch-Geräte wie iPad */
+    .angebot-kachel:hover {
+        transform: none;
+    }
+
+    .angebot-kachel:active {
+        transform: scale(0.98);
+    }
+
+    button,
+    .icon-option {
+        min-height: 44px;
+        min-width: 44px;
+    }
+
+    .admin-controls button {
+        font-size: 1.4rem;
+        padding: 8px;
+    }
+}
+
+/* --- FIXES FÜR iOS/SAFARI SPEZIFISCHE PROBLEME --- */
+@supports (-webkit-touch-callout: none) {
+    /* iOS-spezifische Fixes */
+    body {
+        min-height: -webkit-fill-available;
+    }
+
+    #angebote-grid {
+        height: auto;
+        min-height: calc(100vh - 12rem);
+        min-height: calc(-webkit-fill-available - 12rem);
+    }
+
+    dialog {
+        position: fixed !important;
     }
 }
