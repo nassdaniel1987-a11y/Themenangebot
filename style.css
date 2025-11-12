@@ -291,16 +291,19 @@ dialog {
     max-width: 500px;
     background-color: var(--card-background);
     color: var(--text-color);
+    max-height: 90vh;
+    max-height: 90dvh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+dialog[open] {
     /* Bessere Positionierung für mobile Geräte */
     position: fixed;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
     margin: 0;
-    max-height: 90vh;
-    max-height: 90dvh;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
 }
 dialog::backdrop {
     background: rgba(0, 0, 0, 0.6);
@@ -415,6 +418,11 @@ body.dark-theme .modal-actions button[type="button"]:hover {
     width: 90%;
     max-height: 80vh;
     max-height: 80dvh; /* Dynamic Viewport Height für bessere mobile Unterstützung */
+    padding: 1.5rem;
+    overflow: hidden;
+}
+
+#icon-picker-modal[open] {
     display: flex;
     flex-direction: column;
     position: fixed;
@@ -422,8 +430,6 @@ body.dark-theme .modal-actions button[type="button"]:hover {
     left: 50%;
     transform: translate(-50%, -50%);
     margin: 0;
-    padding: 1.5rem;
-    overflow: hidden;
 }
 
 .icon-picker-header {
@@ -798,7 +804,7 @@ body.dark-theme .modal-actions button[type="button"]:hover {
         min-height: calc(-webkit-fill-available - 12rem);
     }
 
-    dialog {
+    dialog[open] {
         position: fixed !important;
     }
 }
