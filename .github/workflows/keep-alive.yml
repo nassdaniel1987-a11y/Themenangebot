@@ -1,0 +1,29 @@
+name: Supabase Keep-Alive
+
+# Läuft alle 5 Tage, um Supabase aktiv zu halten
+on:
+  schedule:
+    # Läuft alle 5 Tage um 3:00 Uhr UTC
+    - cron: '0 3 */5 * *'
+  # Erlaubt manuelles Auslösen im GitHub Actions Tab
+  workflow_dispatch:
+
+jobs:
+  keep-alive:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Ping Supabase Datenbank
+        run: |
+          curl -X POST \
+            'https://cxqzpqrxkwcxhwzyxofy.supabase.co/rest/v1/angebote?select=id&limit=1' \
+            -H "apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN4cXpwcXJ4a3djeGh3enl4b2Z5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAyOTUzNzcsImV4cCI6MjA3NTg3MTM3N30.DAunoWtMZ3ewR_FRPBdeCc6PuMdjv8ZsN_oZcFtn_qU" \
+            -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN4cXpwcXJ4a3djeGh3enl4b2Z5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAyOTUzNzcsImV4cCI6MjA3NTg3MTM3N30.DAunoWtMZ3ewR_FRPBdeCc6PuMdjv8ZsN_oZcFtn_qU" \
+            -H "Content-Type: application/json"
+          echo "✅ Supabase wurde erfolgreich geweckt!"
+
+      - name: Zusammenfassung
+        run: |
+          echo "### ✅ Keep-Alive erfolgreich" >> $GITHUB_STEP_SUMMARY
+          echo "Supabase Datenbank wurde am $(date) angepingt." >> $GITHUB_STEP_SUMMARY
+          echo "Nächster automatischer Ping in 5 Tagen." >> $GITHUB_STEP_SUMMARY
