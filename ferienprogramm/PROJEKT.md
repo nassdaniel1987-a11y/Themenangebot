@@ -91,6 +91,10 @@ im Browser zusammenbaut und als **Word-Datei (.docx)** exportiert.
 - **Datenordner** (File System Access API, Chrome/Edge): `plaene/<Name>.json`, `bilder/*`, `baukasten.json`;
   speichert automatisch 1,2 s nach jeder Änderung. Ordner-Zugriff wird in IndexedDB gemerkt → zu Hause beim Start
   „🔌 Verbinden“; im Schulnetz muss der Ordner jedes Mal neu gewählt werden.
+- Beim Verbinden: unveränderter Startplan wird **nicht** als neuer Plan gespeichert, sondern der zuletzt bearbeitete Plan
+  aus dem Ordner geöffnet (vorher entstand bei jedem Start `…_2`, `…_3` …). Pläne lassen sich im Dialog per 🗑 löschen.
+- **Startdatei** `Ferienprogramm starten.bat` fürs Schulnetz: Chrome mit eigenem Profil (`Chromeprofil/`), da
+  `O:\Google Chrome.bat` das Profil bei jedem Start per `robocopy /MIR` löscht.
 - **Arbeitsmappe** (Notlösung): eine JSON `{ app, kind: "arbeitsmappe", version, current, plans: {Name: plan}, lib, images }`,
   Speichern = Download; Warnung beim Schließen, wenn ungespeichert. Alte Einzel-Plan-Dateien `{plan, lib}` lassen sich öffnen.
 - Beim Start öffnet sich der Dialog „Pläne & Speicherort“.
