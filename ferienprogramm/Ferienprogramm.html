@@ -1444,8 +1444,8 @@ function renderLib() {
     })));
   } else if (tab === "arch") {
     const all = archiveItems();
-    hint.innerHTML = all.length ? `Alle Angebote aus deinen anderen Plänen. Ziehen oder Doppelklick – ⭐ legt sie in den Baukasten.`
-      : `Hier erscheinen alle Angebote aus deinen <b>anderen Plänen</b>, sobald ein Datenordner oder eine Arbeitsmappe geöffnet ist (📂 Pläne).`;
+    hint.innerHTML = all.length ? `Füllt sich <b>von selbst</b>: alle Angebote aus deinen anderen Plänen. Ziehen oder Doppelklick – ⭐ legt sie in den Baukasten.`
+      : `Füllt sich <b>von selbst</b>: Hier erscheinen alle Angebote aus deinen <b>anderen Plänen</b>, sobald ein Datenordner oder eine Arbeitsmappe geöffnet ist (📂 Pläne).`;
     all.filter(hit).forEach(t => L.appendChild(libItem(t, {
       drag: { kind: "tpl", tpl: t }, from: t.from,
       star: () => { lib.push(Object.assign(contentOf(t), { id: uid() })); persist(); toast(`„${t.title}“ im Baukasten gespeichert`); }
@@ -2349,8 +2349,11 @@ async function connectFolder(handle) {
       if (h.kind === "file" && /\.(png|jpe?g|gif|webp)$/i.test(n)) store.images.push({ name: n, file: await h.getFile() });
     try { const f = await (await store.dir.getFileHandle("baukasten.json")).getFile(); const L = JSON.parse(await f.text()); if (Array.isArray(L.lib || L)) lib = L.lib || L; } catch (e) {}
   } catch (e) { toast("Fehler beim Lesen des Ordners: " + e.message); }
-  // Ist der offene Plan schon im Ordner? Dann die (neuere) Ordner-Fassung behalten, sonst den offenen Plan dort speichern.
+  // Ist der offene Plan schon im Ordner? Dann die (neuere) Ordner-Fassung behalten.
+  // Wurde seit dem Start nichts geändert (Beispiel-/Startplan), den zuletzt bearbeiteten Plan aus dem Ordner öffnen –
+  // sonst entstünde bei jedem Start ein neuer Plan. Nur echte, noch nicht gespeicherte Arbeit wird neu abgelegt.
   if (keep.planName && store.plans[keep.planName]) { openPlan(keep.planName, true); }
+  else if (!undoStack.length && newestPlan()) { planName = ""; openPlan(newestPlan(), true); }
   else { planName = uniqueName(keep.planName || keep.plan.title); store.plans[planName] = { plan, mtime: Date.now() }; await saveNow(); }
   renderAll(); renderFiles(); updateSave();
   toast(`📂 Datenordner „${store.name}“ verbunden – es wird automatisch gespeichert.`);
@@ -2407,7 +2410,23 @@ function updateSave() {
   $("btnFiles").textContent = "📂 " + (planName ? planName.replace(/_/g, " ") : "Pläne");
 }
 
-/* -- Pläne wechseln / neu / öffnen -- */
+/* -- Pläne wechseln / neu / öffnen / löschen -- */
+function newestPlan(except) {
+  return Object.keys(store.plans).filter(n => n !== except).sort((a, b) => (store.plans[b].mtime || 0) - (store.plans[a].mtime || 0))[0] || "";
+}
+async function deletePlan(name) {
+  const other = newestPlan(name);
+  if (name === planName && !other) return toast("Das ist der einzige Plan – zuerst einen neuen Plan anlegen, dann kann dieser gelöscht werden.");
+  if (!confirm(`Plan „${name.replace(/_/g, " ")}“ wirklich löschen?` + (store.kind === "folder" ? "\n\nDie Datei wird aus dem Datenordner (plaene/) entfernt." : ""))) return;
+  if (name === planName) { clearTimeout(markDirty.t); openPlan(other, true); }
+  delete store.plans[name];
+  if (store.kind === "folder") {
+    try { await (await folder(["plaene"])).removeEntry(name + ".json"); }
+    catch (e) { if (e.name !== "NotFoundError") return toast("⚠ Löschen fehlgeschlagen: " + e.message); }
+  } else markDirty();
+  renderFiles(); renderLib();
+  toast(`🗑 „${name.replace(/_/g, " ")}“ gelöscht`);
+}
 function openPlan(name, quiet) {
   const e = store.plans[name]; if (!e) return;
   if (planName && planName !== name) store.plans[planName] = { plan, mtime: store.plans[planName]?.mtime || Date.now() };
@@ -2487,7 +2506,8 @@ function renderFiles() {
     const p = n === planName ? plan : store.plans[n].plan, cur = n === planName;
     const when = store.plans[n]?.mtime ? new Date(store.plans[n].mtime).toLocaleDateString("de-DE") : "";
     return `<div class="pr${cur ? " cur" : ""}"><div class="nm"><b>${esc(n.replace(/_/g, " "))}</b><small>${esc(p.title || "")} · ${p.weeks.length} Woche${p.weeks.length > 1 ? "n" : ""}${when ? " · " + when : ""}</small></div>
-      ${cur ? `<span class="hint">geöffnet</span>` : `<button class="small" data-open="${esc(n)}">Öffnen</button>`}</div>`;
+      ${cur ? `<span class="hint">geöffnet</span>` : `<button class="small" data-open="${esc(n)}">Öffnen</button>`}
+      ${store.plans[n] ? `<button class="small" data-del="${esc(n)}" title="Plan löschen">🗑</button>` : ""}</div>`;
   }).join("");
   B.innerHTML = `<h3>Speicherort</h3>${where}${choices}
     <h3>Pläne</h3>
@@ -2501,6 +2521,7 @@ function renderFiles() {
     </div>
     <p class="hint">Die Arbeitsmappe enthält alle Pläne, den Baukasten und die Bilder – gut zum Sichern oder um sie Kolleg:innen zu geben.</p>`;
   B.querySelectorAll("[data-open]").forEach(x => x.onclick = () => { openPlan(x.dataset.open); closeFiles(); });
+  B.querySelectorAll("[data-del]").forEach(x => x.onclick = () => deletePlan(x.dataset.del));
   B.querySelectorAll("[data-a]").forEach(x => x.onclick = async () => {
     const a = x.dataset.a;
     if (a === "folder") await connectFolder();
