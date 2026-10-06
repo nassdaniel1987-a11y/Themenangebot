@@ -12,8 +12,8 @@ oder direkt **gedruckt** ausgeben. Dazu automatisch **Interessenlisten** zum Ein
 
 Die Schul-Startdatei `O:\Google Chrome.bat` kopiert Chrome bei jedem Start neu (`robocopy /MIR`) und löscht dabei
 das Chrome-Profil – deshalb vergisst Chrome den Datenordner. `Ferienprogramm starten.bat` (liegt neben `Ferienprogramm.html`)
-startet dieselbe Chrome-Kopie, aber mit eigenem Profil im Ordner `Chromeprofil` daneben. Der Planer öffnet sich als
-eigenes Fenster; der Datenordner wird gemerkt („🔌 Verbinden“ statt jedes Mal neu suchen).
+startet dieselbe Chrome-Kopie, aber mit eigenem Profil im Ordner `Chromeprofil` daneben. Der Planer öffnet sich in
+einem neuen Fenster; der Datenordner wird gemerkt („🔌 Verbinden“ statt jedes Mal neu suchen).
 Den ganzen Ordner dafür auf ein Laufwerk legen, das erhalten bleibt (z. B. Home-Laufwerk).
 
 ## Speichern – wichtig im Schulnetz
