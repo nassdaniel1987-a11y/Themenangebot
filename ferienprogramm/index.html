@@ -1,0 +1,2592 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ferienprogramm-Planer</title>
+<script src="lib/docx.js"></script>
+<style>
+  :root {
+    --bg: #eef1f6; --panel: #ffffff; --line: #dde2ea; --text: #1d2733; --muted: #6a7684;
+    --accent: #e8743b; --accent-2: #f5a25d; --accent-soft: #fdeee4; --danger: #c0392b; --ok: #2e8b57;
+    --shadow: 0 1px 2px rgba(16,24,40,.06), 0 6px 20px rgba(16,24,40,.07);
+    --radius: 12px;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body { margin: 0; font-family: "Segoe UI", system-ui, -apple-system, Arial, sans-serif; color: var(--text); background: var(--bg); font-size: 14px; }
+  button, input, select, textarea { font: inherit; color: inherit; }
+  button { cursor: pointer; border: 1px solid var(--line); background: #fff; border-radius: 8px; padding: 6px 11px; transition: border-color .15s, background .15s, transform .05s; }
+  button:hover { border-color: var(--accent); }
+  button:active { transform: translateY(1px); }
+  button.primary { background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #fff; border: none; font-weight: 600; box-shadow: 0 2px 8px rgba(232,116,59,.35); }
+  button.ghost { background: transparent; border-color: transparent; }
+  button.ghost:hover { background: var(--accent-soft); }
+  button.danger { color: var(--danger); }
+  button.small { padding: 3px 8px; font-size: 12px; border-radius: 6px; }
+  button.on { background: var(--accent-soft); border-color: var(--accent); }
+  input[type=text], input[type=date], input[type=number], textarea, select {
+    width: 100%; border: 1px solid var(--line); border-radius: 8px; padding: 6px 9px; background: #fff; font-size: 13px;
+  }
+  input:focus, textarea:focus, select:focus { outline: 2px solid var(--accent-soft); border-color: var(--accent); }
+  textarea { resize: vertical; min-height: 54px; }
+  label { display: block; font-size: 12px; color: var(--muted); margin: 10px 0 3px; font-weight: 500; }
+  hr { border: none; border-top: 1px solid var(--line); margin: 14px 0; }
+
+  /* ---------- Rahmen ---------- */
+  .topbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 10px 16px; background: #fff; border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 50; }
+  .brand { display: flex; align-items: center; gap: 10px; margin-right: 10px; }
+  .brand .logo { width: 34px; height: 34px; border-radius: 10px; background: linear-gradient(135deg, var(--accent), #f6c453); display: grid; place-items: center; font-size: 19px; box-shadow: 0 2px 8px rgba(232,116,59,.35); }
+  .brand b { font-size: 16px; display: block; }
+  .brand small { color: var(--muted); font-size: 11px; }
+  @media (max-width: 1600px) { .brand > div:last-child { display: none; } .topbar { gap: 4px; } .topbar button { padding: 6px 9px; } }
+  .spacer { flex: 1; }
+  .status { font-size: 13px; padding: 5px 10px; border-radius: 20px; background: #e8f5ee; color: var(--ok); font-weight: 600; display: flex; gap: 6px; align-items: center; }
+  .status.warn { background: #fdecea; color: var(--danger); }
+  .app { display: grid; grid-template-columns: 220px minmax(0, 1fr) 310px; gap: 14px; padding: 14px; align-items: start; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; box-shadow: var(--shadow); }
+  .panel h2 { font-size: 14px; margin: 0 0 8px; display: flex; align-items: center; gap: 6px; }
+  .side { position: sticky; top: 70px; max-height: calc(100vh - 84px); overflow: auto; }
+  @media (max-width: 1150px) { .app { grid-template-columns: 1fr; } .side { position: static; max-height: none; } }
+  .hint { font-size: 12px; color: var(--muted); line-height: 1.45; }
+
+  /* ---------- Baukasten ---------- */
+  .lib-item { border: 1px solid var(--line); border-radius: 9px; padding: 7px 8px; margin-bottom: 6px; cursor: grab; display: flex; gap: 7px; align-items: center; font-size: 13px; background: #fff; transition: box-shadow .15s, transform .15s; }
+  .lib-item:hover { box-shadow: 0 3px 10px rgba(0,0,0,.08); transform: translateX(2px); }
+  .lib-item .sw { width: 26px; height: 26px; border-radius: 7px; border: 1px solid rgba(0,0,0,.08); flex: none; display: grid; place-items: center; font-size: 14px; }
+  .lib-item .name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .lib-item button { padding: 0 5px; border: none; color: var(--muted); background: none; visibility: hidden; }
+  .lib-item:hover button { visibility: visible; }
+
+  /* ---------- Arbeitsfläche ---------- */
+  .toolbar2 { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-bottom: 10px; }
+  .tabs { display: flex; gap: 4px; flex-wrap: wrap; align-items: center; }
+  .tab { padding: 6px 13px; border-radius: 20px; border: 1px solid var(--line); background: #fff; cursor: pointer; font-size: 13px; }
+  .tab.active { background: var(--text); color: #fff; border-color: var(--text); font-weight: 600; }
+  .stage { overflow-x: auto; overflow-y: hidden; padding: 8px 4px 4px; }
+  .zoomwrap { position: relative; margin: 0 auto; }
+  .page {
+    position: absolute; left: 0; top: 0; transform-origin: 0 0;
+    width: 297mm; height: 210mm; background: #fff; box-shadow: 0 10px 40px rgba(16,24,40,.18), 0 0 0 1px rgba(0,0,0,.04);
+    display: flex; flex-direction: column; font-family: Arial, "Liberation Sans", Helvetica, sans-serif; color: #000;
+  }
+  .page::after { content: "A4 quer"; position: absolute; right: 0; bottom: -7mm; font: 9pt system-ui, sans-serif; color: var(--muted); }
+  .ptitle { display: flex; justify-content: space-between; align-items: flex-end; gap: 4mm; padding-bottom: 1.2mm; margin-bottom: 2mm; border-bottom: 1.5pt solid var(--t-accent); flex: none; line-height: 1.15; }
+  .ptitle .t { font-weight: 700; color: var(--t-title); }
+  .ptitle .s { font-weight: 700; color: var(--t-title); text-align: right; }
+  .gridwrap { flex: 1; position: relative; min-height: 0; }
+  .grid { position: absolute; left: 0; top: 0; }
+  .grid > .gh, .grid > .cell, .grid > .block { position: absolute; }
+  .pnotes { flex: none; margin-top: 2mm; line-height: 1.15; }
+  .pnotes p { margin: 0; padding: .4mm 2mm .4mm 2mm; background: var(--t-note); border-left: 3pt solid var(--t-accent); }
+
+  .gh, .cell, .block { box-shadow: inset 0 0 0 .5pt var(--t-line); }
+  .gh { background: var(--t-head); font-weight: 700; text-align: center; display: flex; align-items: center; justify-content: center; position: relative; padding: 0 1.5mm; }
+  .gh input { border: none; background: transparent; text-align: center; font-weight: 700; padding: 0; border-radius: 3px; width: 100%; font-family: inherit; font-size: inherit; color: inherit; }
+  .gh input:focus { background: rgba(255,255,255,.8); outline: none; }
+  .gh .col-tools { position: absolute; top: -9mm; left: 50%; transform: translateX(-50%); display: none; gap: 2px; z-index: 6; background: #fff; padding: 2px; border-radius: 8px; box-shadow: var(--shadow); font-family: system-ui; }
+  .gh:hover .col-tools, .gh:focus-within .col-tools { display: flex; }
+  .cell { display: flex; align-items: center; justify-content: center; }
+  .cell .add { opacity: 0; transition: opacity .15s; border-style: dashed; color: var(--muted); font-family: system-ui; }
+  .cell:hover .add { opacity: 1; }
+  .cell.drop-ok { background: #e3f4e6; box-shadow: inset 0 0 0 2px #3a9a4b; }
+  .cell.drop-bad { background: #fbe3e1; }
+
+  .block { display: flex; flex-direction: column; justify-content: center; padding: 1mm 1.5mm; overflow: hidden; text-align: center; cursor: pointer; font-size: var(--fs); line-height: 1.15; word-wrap: break-word; }
+  .block:hover { outline: 2px solid rgba(232,116,59,.35); outline-offset: -2px; }
+  .block.selected { outline: 2.5px solid var(--accent); outline-offset: -2.5px; overflow: visible; z-index: 5; }
+  .block.drop-ok { box-shadow: inset 0 0 0 3px #3a9a4b; }
+  .block.drop-bad { opacity: .6; }
+  .block.dragging { opacity: .35; }
+  .block.imgdrop { outline: 3px dashed var(--accent); outline-offset: -3px; }
+  .content { position: relative; isolation: isolate; }
+  .content p { margin: 0 0 3pt; white-space: pre-wrap; }
+  .content .b-title { font-weight: 700; font-size: calc(var(--fs) + 2pt); }
+  .content .b-time { font-weight: 700; }
+  .content .b-note { font-weight: 700; }
+  .content .b-contact { font-style: italic; font-size: calc(var(--fs) - 1pt); }
+  .content .b-imgs { line-height: 0; }
+  .content .b-imgs .imgbox { display: inline-block; margin: 0 .8mm; vertical-align: bottom; }
+  .block.overflow::after { content: "⚠ zu viel Text"; position: absolute; right: 2px; bottom: 2px; background: var(--danger); color: #fff; font: 600 10px system-ui; padding: 2px 6px; border-radius: 10px; z-index: 7; }
+  .block.selected.overflow::after { bottom: -18px; }
+
+  .imgbox { position: relative; }
+  .imgbox img { width: 100%; display: block; pointer-events: none; user-select: none; }
+  .imgbox.free { position: absolute; z-index: 2; }
+  .imgbox.fl { float: left; clear: both; margin: 0 2.5mm 2.5mm 0; }
+  .imgbox.fr { float: right; clear: both; margin: 0 0 2.5mm 2.5mm; }
+  .fspacer { width: 0; float: left; clear: both; }
+  /* Felder mit frei platzierten Bildern: Inhalt beginnt oben, das Bild kann überall im Feld stehen */
+  .block.imgfree { justify-content: flex-start; }
+  .content { display: flow-root; }
+  .imgbox.dragging { opacity: .75; }
+  .imgbox.behind { z-index: -1; }
+  .imgbox { cursor: move; }
+  .imgbox.sel { outline: 2px solid #2f80ed; outline-offset: 1px; }
+  .imgbox .ih { display: none; position: absolute; width: 12px; height: 12px; right: -7px; bottom: -7px; background: #2f80ed; border: 2px solid #fff; border-radius: 50%; cursor: nwse-resize; z-index: 8; }
+  .imgbox .ix { display: none; position: absolute; top: -10px; right: -10px; width: 20px; height: 20px; border-radius: 50%; background: var(--danger); color: #fff; border: 2px solid #fff; font: 700 11px/16px system-ui; text-align: center; cursor: pointer; z-index: 8; padding: 0; }
+  .imgbox.sel .ih, .imgbox.sel .ix { display: block; }
+
+  .knob { position: absolute; z-index: 9; width: 18px; height: 18px; border-radius: 50%; background: var(--accent); color: #fff; border: 2px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.3); font: 700 10px/14px system-ui; text-align: center; }
+  .knob.kr { right: -10px; top: 50%; margin-top: -9px; cursor: pointer; }
+  .knob.kb { bottom: -10px; left: 50%; margin-left: -9px; cursor: pointer; }
+  .knob:hover { transform: scale(1.2); }
+
+  .divider { position: absolute; z-index: 6; }
+  .divider.head { z-index: 7; }
+  .divider .sizetip { position: absolute; background: #2f80ed; color: #fff; font: 600 11px system-ui; padding: 2px 7px; border-radius: 6px; white-space: nowrap; pointer-events: none; z-index: 20; }
+  .divider.v .sizetip { top: 50%; left: 8px; transform: translateY(-50%); }
+  .divider.h .sizetip { left: 50%; top: 8px; transform: translateX(-50%); }
+  .divider:not(.active) .sizetip { display: none; }
+  .divider.v { width: 9px; margin-left: -4.5px; cursor: col-resize; }
+  .divider.h { height: 9px; margin-top: -4.5px; cursor: row-resize; }
+  /* Griffe innen am eigenen Rand des Felds */
+  .divider.v.in-end { width: 7px; margin-left: -7px; }
+  .divider.v.in-start { width: 7px; margin-left: 0; }
+  .divider.h.in-end { height: 7px; margin-top: -7px; }
+  .divider.h.in-start { height: 7px; margin-top: 0; }
+  .divider:hover, .divider.active { background: rgba(47,128,237,.35); }
+  .rowtools { position: absolute; display: flex; flex-direction: column; gap: 3px; justify-content: center; font-family: system-ui; }
+  .rowtools button { padding: 1px 6px; font-size: 11px; }
+
+  /* ---------- Editor ---------- */
+  .swatches { display: flex; flex-wrap: wrap; gap: 5px; }
+  .swatches span { width: 25px; height: 25px; border-radius: 7px; border: 1px solid rgba(0,0,0,.15); cursor: pointer; transition: transform .1s; }
+  .swatches span:hover { transform: scale(1.12); }
+  .swatches span.on { outline: 2.5px solid var(--accent); outline-offset: 1px; }
+  .emojis { display: grid; grid-template-columns: repeat(8, 1fr); gap: 2px; }
+  .emojis button { padding: 3px 0; font-size: 17px; border: 1px solid transparent; background: none; }
+  .emojis button.on { border-color: var(--accent); background: var(--accent-soft); }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .btnrow { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+  .check { display: flex; gap: 7px; align-items: center; font-size: 13px; color: var(--text); margin-top: 8px; }
+  .check input { width: auto; margin: 0; accent-color: var(--accent); }
+  .stepper { display: flex; align-items: center; gap: 6px; }
+  .stepper b { min-width: 52px; text-align: center; font-size: 13px; }
+  .imglist .it { display: grid; grid-template-columns: 46px 1fr; gap: 8px; align-items: center; border: 1px solid var(--line); border-radius: 9px; padding: 6px; margin-bottom: 6px; }
+  .imglist .it.sel { border-color: #2f80ed; background: #f2f7fe; }
+  .imglist img { width: 46px; height: 46px; object-fit: contain; background: #f6f6f6; border-radius: 6px; }
+  .imglist .ctl { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+  .imglist input[type=range] { width: 100%; accent-color: #2f80ed; }
+  .themes { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .theme { border: 1px solid var(--line); border-radius: 10px; padding: 7px; cursor: pointer; font-size: 12.5px; display: flex; gap: 7px; align-items: center; background: #fff; }
+  .theme .dots { display: flex; }
+  .theme .dots i { width: 12px; height: 12px; border-radius: 50%; margin-right: -3px; border: 1.5px solid #fff; }
+  .theme.on { border-color: var(--accent); background: var(--accent-soft); font-weight: 600; }
+  .upload { display: flex; align-items: center; justify-content: center; gap: 6px; border: 2px dashed var(--line); border-radius: 10px; padding: 10px; color: var(--muted); cursor: pointer; font-size: 13px; }
+  .upload:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ---------- schwebendes Bearbeiten-Fenster ---------- */
+  .winbar { display: flex; align-items: center; gap: 4px; margin: -14px -14px 10px; padding: 7px 8px 7px 12px; border-radius: 12px 12px 0 0;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #fff; font-weight: 600; font-size: 13px; }
+  .winbar button { background: rgba(255,255,255,.18); border: none; color: #fff; padding: 2px 8px; font-size: 12px; }
+  .winbar button:hover { background: rgba(255,255,255,.35); }
+  #right:not(.float) #winAuto, #right:not(.float) #winMin, #right:not(.float) #winDock, #right:not(.float) .grip { display: none; }
+  .app.floating { grid-template-columns: 220px minmax(0, 1fr); }
+  #right.float { position: fixed; z-index: 60; width: 300px; max-height: calc(100vh - 90px); overflow: auto; padding: 0;
+    box-shadow: 0 18px 50px rgba(16,24,40,.28), 0 0 0 1px rgba(0,0,0,.05); border-radius: 14px; }
+  #right.float .winbar { position: sticky; top: 0; z-index: 2; cursor: grab; user-select: none; margin: 0; border-radius: 14px 14px 0 0; }
+  #right.float .winbar:active { cursor: grabbing; }
+  #right.float .winbar button { background: rgba(255,255,255,.18); border: none; color: #fff; padding: 2px 8px; font-size: 12px; }
+  #right.float .winbar button:hover { background: rgba(255,255,255,.35); }
+  #right.float #rightBody { padding: 4px 14px 12px; }
+  #winTitle { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #right.float.min #rightBody { display: none; }
+  #right.float.min { border-radius: 14px; }
+  #right:not(.float) .dockbtn { display: block; }
+  .dockbtn { display: none; width: 100%; margin-bottom: 10px; }
+  details.sec { border-top: 1px solid var(--line); }
+  details.sec:first-of-type { border-top: none; }
+  details.sec > summary { display: flex; align-items: center; gap: 6px; padding: 9px 2px; font-size: 13.5px; }
+  details.sec > summary::before { content: "▸"; color: var(--muted); width: 10px; transition: transform .15s; display: inline-block; }
+  details.sec[open] > summary::before { content: "▸"; transform: rotate(90deg); }
+  details.sec > summary span:first-of-type { flex: 1; }
+  details.sec > summary:hover { color: var(--accent); }
+  .sumval { font-weight: 500; color: var(--muted); font-size: 12px; display: flex; align-items: center; gap: 5px; }
+  .sumval .dot { width: 12px; height: 12px; border-radius: 4px; border: 1px solid rgba(0,0,0,.15); display: inline-block; }
+  .secbody { padding: 0 2px 12px; }
+  .secbody > label:first-child { margin-top: 0; }
+  .actions { display: flex; gap: 6px; border-top: 1px solid var(--line); padding-top: 10px; margin-top: 2px; }
+  .actions button { flex: 1; white-space: nowrap; }
+  .toast { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%) translateY(10px); background: #1d2733; color: #fff; padding: 10px 18px; border-radius: 10px; font-size: 14px; opacity: 0; transition: opacity .2s, transform .2s; pointer-events: none; z-index: 100; box-shadow: var(--shadow); }
+  .toast.show { opacity: 1; transform: translateX(-50%); }
+  /* ---------- Leiste am Feld & direkt schreiben ---------- */
+  .ctx { position: fixed; z-index: 70; display: flex; align-items: center; gap: 2px; padding: 4px; background: #fff; border-radius: 11px;
+    box-shadow: 0 8px 26px rgba(16,24,40,.22), 0 0 0 1px rgba(0,0,0,.06); font-size: 14px; }
+  .ctx[hidden], .ctxpop[hidden] { display: none; }
+  .ctx button { border: none; background: none; padding: 4px 8px; border-radius: 7px; min-width: 30px; font-weight: 600; }
+  .ctx button:hover, .ctx button.open { background: var(--accent-soft); }
+  .ctx button.on { background: var(--accent); color: #fff; }
+  .ctx button.lbl { min-width: 26px; padding: 4px 2px; color: var(--muted); }
+  .ctx button.danger { color: var(--danger); }
+  .ctx .dot { display: inline-block; width: 16px; height: 16px; border-radius: 5px; border: 1px solid rgba(0,0,0,.2); vertical-align: middle; }
+  .ctx .sep { width: 1px; height: 20px; background: var(--line); margin: 0 3px; }
+  .ctxpop { position: fixed; z-index: 71; background: #fff; border-radius: 11px; padding: 8px; box-shadow: 0 10px 30px rgba(16,24,40,.25), 0 0 0 1px rgba(0,0,0,.06); }
+  .ctxpop .swatches { width: 230px; }
+  .ctxpop .emojis { width: 280px; }
+  .ctxpop .cpick { width: 27px; height: 27px; padding: 0; border: none; background: none; cursor: pointer; }
+  .ctxpop .menu { display: flex; flex-direction: column; min-width: 190px; }
+  .ctxpop .menu button { border: none; background: none; text-align: left; padding: 7px 10px; border-radius: 7px; }
+  .ctxpop .menu button:hover { background: var(--accent-soft); }
+  .block.selected [data-k] { cursor: text; border-radius: 2px; }
+  .block.selected:not(.editing) [data-k]:hover { background: rgba(255,255,255,.7); box-shadow: 0 0 0 1px rgba(232,116,59,.6); }
+  [data-k][contenteditable] { background: #fff; outline: 2px solid var(--accent); outline-offset: 1px; cursor: text; white-space: pre-wrap; }
+
+  /* ---------- Baukasten-Reiter ---------- */
+  .ltabs { display: flex; gap: 2px; background: var(--bg); padding: 3px; border-radius: 10px; margin-bottom: 8px; }
+  .ltabs button { flex: 1; border: none; background: none; padding: 5px 2px; font-size: 12px; border-radius: 8px; white-space: nowrap; }
+  .ltabs button.on { background: #fff; font-weight: 700; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
+  #libSearch { font-size: 12.5px; padding: 5px 8px; }
+  .lib-item .from { display: block; font-size: 10.5px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .lib-item .name b { font-weight: 500; display: block; overflow: hidden; text-overflow: ellipsis; }
+  .imggrid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .imggrid .im { position: relative; border: 1px solid var(--line); border-radius: 8px; background: #f6f6f6 center/contain no-repeat; aspect-ratio: 1; cursor: grab; }
+  .imggrid .im:hover { border-color: var(--accent); }
+  .imggrid .im span { position: absolute; left: 0; right: 0; bottom: 0; font-size: 10px; background: rgba(255,255,255,.85); padding: 1px 4px; border-radius: 0 0 8px 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .topbar button.save.dirty { color: var(--danger); font-weight: 700; }
+  .topbar button.save.ok { color: var(--ok); }
+
+  /* ---------- Dialog Pläne & Speicherort ---------- */
+  #fmodal { align-items: center; justify-content: center; }
+  .fbox { background: #fff; border-radius: 14px; width: min(720px, calc(100vw - 32px)); max-height: calc(100vh - 40px); display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,.35); }
+  .fbody { overflow: auto; padding: 16px 18px 20px; }
+  .fbody h3 { font-size: 14px; margin: 18px 0 8px; }
+  .fbody h3:first-child { margin-top: 0; }
+  .where { display: flex; gap: 12px; align-items: center; padding: 12px 14px; border-radius: 12px; background: var(--bg); }
+  .where .big { font-size: 26px; }
+  .where .txt { flex: 1; }
+  .where .txt b { display: block; font-size: 14px; }
+  .where.ok { background: #e8f5ee; }
+  .where.warn { background: #fdecea; }
+  .choices { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .choice { border: 1px solid var(--line); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 6px; }
+  .choice p { margin: 0; font-size: 12.5px; color: var(--muted); line-height: 1.4; flex: 1; }
+  .plist { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  .plist .pr { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-top: 1px solid var(--line); }
+  .plist .pr:first-child { border-top: none; }
+  .plist .pr.cur { background: var(--accent-soft); }
+  .plist .pr .nm { flex: 1; min-width: 0; }
+  .plist .pr .nm b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .plist .pr .nm small { color: var(--muted); }
+  @media (max-width: 600px) { .choices { grid-template-columns: 1fr; } }
+
+  /* ---------- Interessenlisten ---------- */
+  .modal { position: fixed; inset: 0; z-index: 200; background: rgba(20,26,36,.62); display: flex; flex-direction: column; }
+  .modal[hidden] { display: none; }
+  .mbar { display: flex; gap: 8px; align-items: center; padding: 10px 16px; background: #fff; border-bottom: 1px solid var(--line); }
+  .mbody { flex: 1; overflow: auto; padding: 20px; display: flex; flex-wrap: wrap; gap: 24px; justify-content: center; align-content: flex-start; }
+  .lwrap { display: flex; flex-direction: column; gap: 6px; }
+  .lcap { color: #fff; font-size: 13px; font-weight: 600; }
+  .lthumb { position: relative; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,.35); background: #fff; }
+  .lthumb .lpage { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+  #printArea { position: absolute; left: -10000px; top: 0; }
+  .ppage { width: 297mm; height: 210mm; position: relative; overflow: hidden; background: #fff; }
+  .ppage .page { position: relative; transform: none; box-shadow: none; }
+  .ppage .page::after { display: none; }
+  .lthumb > .ppage { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+  .lpage { width: 210mm; height: 297mm; padding: 10mm 14mm 14mm; background: #fff; display: flex; flex-direction: column; position: relative;
+    font-family: Arial, "Liberation Sans", Helvetica, sans-serif; color: #222; line-height: 1.15; }
+  .l-top { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 3pt solid var(--l-accent); padding-bottom: 1.5mm; }
+  .l-kind { font-size: 11pt; font-weight: 700; color: var(--l-accent); text-transform: uppercase; letter-spacing: .3px; }
+  .l-group { font-size: 10pt; color: #555; }
+  .l-h1 { margin: 4mm 0 3mm; font-size: 22pt; color: var(--l-title); display: flex; gap: 3mm; align-items: center; line-height: 1.15; }
+  .l-info { display: grid; grid-template-columns: 40mm 1fr; background: var(--l-head); padding: 1.5mm 2mm 1.5mm 5mm; font-size: 11pt; row-gap: 1.2mm; }
+  .l-info b { color: var(--l-title); }
+  .l-text { margin-top: 3mm; font-size: 11pt; line-height: 1.3; white-space: pre-wrap; }
+  .l-hint { margin-top: 3mm; background: var(--l-note); border-left: 4.5pt solid var(--l-accent); padding: .5mm 3mm; font-size: 11pt; white-space: pre-wrap; }
+  .l-lh { display: flex; justify-content: space-between; align-items: baseline; margin: 4mm 0 2mm; }
+  .l-lh b { font-size: 14pt; color: var(--l-title); }
+  .l-lh span { font-size: 10pt; color: #666; }
+  .l-tw { flex: 1; min-height: 0; }
+  .l-tw table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  .l-tw th { background: var(--l-accent); color: #fff; font-size: 11pt; text-align: left; padding: 1.5mm 3mm; border: .75pt solid var(--l-line); }
+  .l-tw th.c-nr, .l-tw th.c-staff { text-align: center; padding: 1.5mm 1mm; }
+  .l-tw th.c-staff { font-size: 8.5pt; }
+  .l-tw td { border: .75pt solid var(--l-line); padding: 0 3mm; font-size: 12pt; }
+  .l-tw td.c-nr { text-align: center; font-weight: 700; color: var(--l-title); background: var(--l-note); padding: 0; }
+  .l-tw tr.wait td.c-nr { background: #EDEDED; color: #777; }
+  .l-tw tr.sep td { border-left: none; border-right: none; vertical-align: bottom; font-weight: 700; color: #666; padding: 0 0 .5mm; }
+  .l-foot { position: absolute; left: 14mm; right: 14mm; bottom: 6mm; display: flex; justify-content: space-between; font-size: 9pt; color: #777; }
+  @media print {
+    @page { size: A4 portrait; margin: 0; }
+    body { background: #fff; }
+    body > *:not(#printArea) { display: none !important; }
+    #printArea { position: static; }
+    @page plan { size: A4 landscape; margin: 0; }
+    #printArea .ppage { page: plan; }
+    #printArea > div { break-after: page; }
+    #printArea > div:last-child { break-after: auto; }
+    * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+  details > summary { cursor: pointer; font-weight: 600; font-size: 14px; list-style: none; }
+  details > summary::before { content: "▸ "; color: var(--muted); }
+  details[open] > summary::before { content: "▾ "; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand"><div class="logo">🗓️</div><div><b>Ferienprogramm-Planer</b><small>Baukasten · A4 quer · Word-Export</small></div></div>
+  <button class="ghost" id="btnUndo" title="Rückgängig (Strg+Z)">↶ Rückgängig</button>
+  <button class="ghost" id="btnFiles" title="Pläne öffnen, neu anlegen, Datenordner oder Arbeitsmappe wählen">📂 Pläne</button>
+  <button class="ghost save" id="btnSave" title="Speichern">💾 Speichern</button>
+  <input type="file" id="fileLoad" accept=".json,application/json" hidden>
+  <button class="ghost" id="btnDesign" title="Thema, Überschrift, Hinweise, Interessenlisten-Vorlage …">🎨 Seite &amp; Design</button>
+  <span class="spacer"></span>
+  <span class="status" id="status">✔ passt auf 1 Seite</span>
+  <button id="btnFit" title="Schrift in übervollen Feldern automatisch verkleinern">✨ Text einpassen</button>
+  <button id="btnLists" title="Alle Interessenlisten ansehen, drucken oder als Word-Datei speichern">📋 Interessenlisten</button>
+  <button id="btnPrint" title="Druckansicht: alle Wochen (und auf Wunsch die Interessenlisten) ansehen und drucken">🖨 Drucken</button>
+  <button class="primary" id="btnWord">⬇ Word-Datei (.docx)</button>
+</div>
+
+<div class="app" id="app">
+  <!-- Baukasten -->
+  <aside class="panel side" id="libPanel">
+    <div class="ltabs" id="libTabs">
+      <button data-t="lib" title="Deine gemerkten Bausteine">⭐ Baukasten</button>
+      <button data-t="arch" title="Alle Angebote aus früheren Plänen">🗂 Archiv</button>
+      <button data-t="img" title="Gemerkte Bilder">🖼 Bilder</button>
+    </div>
+    <input type="text" id="libSearch" placeholder="🔍 Suchen …">
+    <p class="hint" id="libHint" style="margin-top:6px"></p>
+    <div id="lib"></div>
+    <input type="file" id="libImgInput" accept="image/*" multiple hidden>
+  </aside>
+
+  <!-- Seite -->
+  <main>
+    <div class="toolbar2">
+      <div class="tabs" id="tabs"></div>
+      <span class="spacer"></span>
+      <button class="small" id="btnAddRow">＋ Zeile</button>
+      <button class="small" id="btnAddCol">＋ Tag</button>
+    </div>
+    <div class="stage" id="stage"><div class="zoomwrap" id="zoomwrap"><div class="page" id="page"></div></div></div>
+    <p class="hint">
+      <b>Tipps:</b> Feld anklicken = Leiste zum Ändern · <b>Text im ausgewählten Feld anklicken</b> (oder Doppelklick) = direkt schreiben · ⚙ = alle Einstellungen · Feld ziehen = verschieben · <b>Linie am Feldrand ziehen</b> = nur dieses Feld und seine direkten Nachbarn werden größer/kleiner ·
+      Feld auf ein anderes ziehen = Plätze tauschen · orange ＋ am ausgewählten Feld = mit Nachbarfeld verbinden · Bilder anklicken = verschieben, an der blauen Ecke größer/kleiner, ✕ = löschen ·
+      Bilddateien kann man auch direkt auf ein Feld ziehen. Alles wird automatisch im Browser gespeichert.
+    </p>
+  </main>
+
+  <!-- Rechte Seite: Feld-Editor oder Seiteneinstellungen -->
+  <aside class="panel side" id="right">
+    <div class="winbar" id="winbar" title="Hier anfassen und verschieben">
+      <span class="grip">✥</span><span id="winTitle" style="flex:1">Bearbeiten</span>
+      <button id="winAuto" title="Fenster wieder automatisch neben dem Feld öffnen">↺ auto</button>
+      <button id="winMin" title="Ein-/Ausklappen">▁</button>
+      <button id="winDock" title="Rechts am Rand andocken">⇥</button>
+      <button id="winClose" title="Auswahl aufheben (Esc)">✕</button>
+    </div>
+    <button class="small dockbtn" id="winFloat">🪟 Als schwebendes Fenster lösen</button>
+    <div id="rightBody"></div>
+  </aside>
+</div>
+
+<input type="file" id="imgInput" accept="image/*" multiple hidden>
+<div class="ctx" id="ctx" hidden></div>
+<div class="ctxpop" id="ctxpop" hidden></div>
+<div class="toast" id="toast"></div>
+
+<!-- Vorschau Interessenlisten -->
+<div class="modal" id="lmodal" hidden>
+  <div class="mbar">
+    <b id="lmTitle">📋 Interessenlisten</b><span class="spacer"></span>
+    <label class="check" id="lmAttachWrap" style="margin:0 8px 0 0"><input type="checkbox" id="lmAttach"> 📋 Interessenlisten mit dazu</label>
+    <button id="lmPrint">🖨 Drucken</button>
+    <button class="primary" id="lmWord">⬇ Word-Datei</button>
+    <button id="lmClose" title="Schließen (Esc)">✕</button>
+  </div>
+  <div class="mbody" id="lmBody"></div>
+</div>
+<!-- Pläne & Speicherort -->
+<div class="modal" id="fmodal" hidden>
+  <div class="fbox">
+    <div class="mbar"><b>📂 Pläne &amp; Speicherort</b><span class="spacer"></span><button id="fmClose" title="Schließen (Esc)">✕</button></div>
+    <div class="fbody" id="fmBody"></div>
+  </div>
+</div>
+
+<!-- Druckbereich: wird unsichtbar aufgebaut (zum Ausmessen) und nur beim Drucken gezeigt -->
+<div id="printArea"></div>
+
+<script>
+"use strict";
+/* ============================================================
+   Konstanten, Themen
+   ============================================================ */
+const PX = 96 / 25.4;                 // Pixel pro mm (CSS)
+const TW = 1440 / 25.4;               // Twips pro mm (Word)
+const EMU = 36000;                    // EMU pro mm (Word-Grafiken)
+const PAGE_W = 297, PAGE_H = 210;     // A4 quer
+const SAFETY = 4;                     // mm Reserve, damit Word sicher auf einer Seite bleibt
+const STORE_KEY = "ferienplaner.v2", LIB_KEY = "ferienplaner.lib.v2";
+const WEEKDAYS = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"];
+const EMOJIS = ["", "🍂", "🍁", "🎃", "🌰", "🍄", "☀️", "🌷", "❄️", "⛄", "🎄", "🐣", "⚽", "🤸", "🏃", "🧘", "🎨", "✂️", "🖌️", "🔨", "🧵", "🎲", "🧩", "🎬", "🍿", "🧁", "🍳", "🥨", "🌳", "🛝", "🚌", "🚂", "🏊", "🎵", "📚", "🔍", "🗺️", "💎", "🐾", "⭐"];
+
+const THEMES = {
+  klassisch: { name: "Klassisch", icon: "📘", head: "#DEEAF6", title: "#1F3864", accent: "#2E75B6", note: "#EAF1FB", line: "#404040", deco: "",
+    palette: ["#FFFFFF", "#DEEAF6", "#E2EFD9", "#FFF2CC", "#FBE4D5", "#EDE2F6", "#FCE4EC", "#E0F7F7", "#EDEDED", "#BDD6EE", "#C5E0B3", "#F8CBAD"] },
+  herbst: { name: "Herbst", icon: "🍂", head: "#F8CBAD", title: "#843C0C", accent: "#C55A11", note: "#FBE5D6", line: "#5A3A22", deco: "🍂",
+    palette: ["#FFFFFF", "#FBE5D6", "#FFF2CC", "#FFE699", "#F8CBAD", "#E2EFD9", "#C5E0B3", "#EAD1C1", "#F4B183", "#FCE4D6", "#EDEDED", "#DDEBF7"] },
+  winter: { name: "Winter", icon: "❄️", head: "#BDD7EE", title: "#1F4E79", accent: "#2E75B6", note: "#DDEBF7", line: "#2F4F6F", deco: "❄️",
+    palette: ["#FFFFFF", "#DDEBF7", "#BDD7EE", "#E7E6F7", "#D9D2E9", "#E2F0F9", "#F2F2F2", "#FCE4EC", "#D0E8E4", "#FFF2CC", "#C9DAF8", "#EDEDED"] },
+  fruehling: { name: "Frühling", icon: "🌷", head: "#C6E0B4", title: "#375623", accent: "#70AD47", note: "#E2EFDA", line: "#3B4F2A", deco: "🌷",
+    palette: ["#FFFFFF", "#E2EFDA", "#C6E0B4", "#FFF2CC", "#FCE4EC", "#F8D7E8", "#E8DFF5", "#DDEBF7", "#FFE5CC", "#F2F2F2", "#D5F0E3", "#FFF9C4"] },
+  sommer: { name: "Sommer", icon: "☀️", head: "#FFD966", title: "#7F4F00", accent: "#F2A900", note: "#FFF2CC", line: "#5C4A1A", deco: "☀️",
+    palette: ["#FFFFFF", "#FFF2CC", "#FFE699", "#D9F2F7", "#B4E5EF", "#FDD9CF", "#FBC4B6", "#E2EFDA", "#C6E0B4", "#F2F2F2", "#FFE5CC", "#E8DFF5"] },
+};
+
+const uid = () => Math.random().toString(36).slice(2, 10);
+
+/** Standard für Interessenlisten (Text-Vorlage mit Platzhaltern, Spalten, Warteliste) */
+const LIST_TEXT = "Du möchtest bei **{Titel}** dabei sein? Dann trag dich hier mit deinem Namen und deiner Klasse ein. Bei Fragen wendet euch bitte an **{Ansprechpartner}**.";
+function defaultLists() { return { text: LIST_TEXT, klasse: true, gruppe: false, staff: true, wait: 3, attach: false }; }
+
+/* ============================================================
+   Datenmodell
+   ============================================================ */
+function block(o) {
+  return Object.assign({ id: uid(), x: 0, y: 0, w: 1, h: 1, empty: false, icon: "", title: "", hash: false, time: "", desc: "", note: "", contact: "", color: "#FFFFFF", fs: null, imgs: [] }, o);
+}
+function demoPlan() {
+  return {
+    title: "Herbstferienprogramm 2026", subtitle: "Juniorklasse & GTS 1", deco: "🍂",
+    footer: "**Wichtig und gut immer dabei zu haben:** Sportsachen für die Halle – Rucksack mit Trinken & Vesper\n**Achtung:** Stimmen eure Heimgehzeiten mit den Ausflugszeiten überein?!\n**Uuunnnddd …** bei allen Ausflügen mit # Zeichen müsst ihr euch in eine Interessenliste eintragen!",
+    theme: "herbst", ...pickTheme("herbst"),
+    fontSize: 9, titleSize: 20, margin: 10, headH: 8, active: 0, lists: defaultLists(),
+    weeks: [{
+      id: uid(), name: "Woche 1", start: "2026-10-26",
+      days: ["Montag, 26.10.2026", "Dienstag, 27.10.2026", "Mittwoch, 28.10.2026", "Donnerstag, 29.10.2026", "Freitag, 30.10.2026"],
+      colW: [1, 1, 1, 1, 1],
+      blocks: fromGrid([1, 1, 1, 1, 1], [1, 1, 1], [
+        block({ col: 0, row: 0, rs: 2, icon: "🤸", title: "Parcours in der Turnhalle", note: "Bitte bringt Sportsachen und Turnschuhe mit!", contact: "Herr Ntsinjang & Herr Daiker", color: "#E2EFD9" }),
+        block({ col: 1, row: 0, icon: "🚌", title: "Ausflug", desc: "Hier kommt der Ausflug rein.", hash: true, color: "#FFF2CC" }),
+        block({ col: 3, row: 0, icon: "🛝", title: "Spielplatz", desc: "Heute Morgen gehen wir nach dem Frühstück gemeinsam auf den Spielplatz. Wir sind zum Mittagessen wieder zurück.", note: "Bitte zieht wettergerechte Kleidung und Schuhe an und seid bis spätestens 9:00 Uhr da.", contact: "Fr. Schilling & Herr Daiker" }),
+        block({ col: 1, row: 1, icon: "💎", title: "Schatzsuche", desc: "Wer kann das Rätsel lösen und findet den Schatz?", contact: "Fr. Feldmann", color: "#FBE5D6" }),
+        block({ col: 2, row: 1, icon: "🎲", title: "Brettspieltag", desc: "Heute wird gespielt! Wenn ihr möchtet, könnt ihr auch ein Brett- oder Kartenspiel von zuhause mitbringen." }),
+        block({ col: 3, row: 1, icon: "🧘", title: "Yoga für Kinder", desc: "Nach dem Ausflug und dem Mittagessen könnt ihr euch, wenn ihr möchtet, beim Yoga entspannen.", contact: "Fr. Feldmann", color: "#EAD1C1" }),
+        block({ col: 4, row: 1, icon: "🧩", title: "Freispiel", desc: "Ihr könnt nach Lust und Laune im Bauzimmer bauen oder im Spielzimmer verschiedene Spiele spielen. Auch der Hof hat bei passendem Wetter geöffnet." }),
+        block({ col: 0, row: 2, cs: 3, icon: "🎨", title: "Herbst-Atelier", desc: "Das Atelier wird an diesen drei Tagen immer wieder geöffnet sein. Dort könnt ihr passend zum Thema Herbst malen und basteln.", contact: "Frau Schilling", color: "#FBE5D6" }),
+        block({ col: 3, row: 2, cs: 2, icon: "🔨", title: "Werkstatt", desc: "In der Werkstatt könnt ihr verschiedene Dinge basteln, malen oder auch nähen. Frau Kromm freut sich auf euch und hat bestimmt viele tolle und kreative Ideen.", contact: "Frau Kromm", color: "#DDEBF7" }),
+      ])
+    }]
+  };
+}
+function pickTheme(key) {
+  const t = THEMES[key] || THEMES.klassisch;
+  return { headColor: t.head, titleColor: t.title, accentColor: t.accent, noteColor: t.note, lineColor: t.line };
+}
+function defaultLib() {
+  const L = (icon, title, color, extra) => Object.assign({ id: uid(), icon, title, color, hash: false, time: "", desc: "", note: "", contact: "", imgs: [] }, extra || {});
+  return [
+    L("🧩", "Freispiel", "#FFFFFF", { desc: "Ihr könnt nach Lust und Laune im Bauzimmer bauen oder im Spielzimmer verschiedene Spiele spielen." }),
+    L("🛝", "Spielplatz", "#E2EFD9", { desc: "Nach dem Frühstück gehen wir gemeinsam auf den Spielplatz.", note: "Bitte zieht wettergerechte Kleidung an." }),
+    L("🤸", "Turnhalle", "#E2EFD9", { note: "Bitte bringt Sportsachen und Turnschuhe mit!" }),
+    L("🚌", "Ausflug", "#FFF2CC", { hash: true, time: "9:00 – 15:00 Uhr", note: "Rucksack mit Trinken & Vesper mitbringen!" }),
+    L("🎨", "Atelier / Basteln", "#FBE5D6", { desc: "Wir malen und basteln passend zum Thema." }),
+    L("🎲", "Brettspieltag", "#FFFFFF", { desc: "Heute wird gespielt! Bringt gern eigene Spiele mit." }),
+    L("🧘", "Yoga für Kinder", "#E8DFF5", { desc: "Zeit zum Entspannen." }),
+    L("🎬", "Kino / Film", "#DDEBF7", { desc: "Popcorn inklusive!" }),
+    L("🧁", "Backen", "#FCE4EC", { desc: "Wir backen gemeinsam." }),
+    L("🔍", "Schatzsuche", "#FBE5D6", { desc: "Wer löst das Rätsel und findet den Schatz?" }),
+    L("", "Leeres Feld", "#FFFFFF"),
+  ];
+}
+
+/** Ältere gespeicherte Pläne auf das aktuelle Format bringen */
+function migrate(p) {
+  if (!p || !p.weeks) return demoPlan();
+  const d = demoPlan();
+  for (const k of ["fontSize", "titleSize", "margin", "headH", "theme", "deco", "headColor", "titleColor", "accentColor", "noteColor", "lineColor"]) if (p[k] == null) p[k] = d[k];
+  p.lists = Object.assign(defaultLists(), p.lists || {});
+  p.weeks.forEach(w => {
+    if (!w.colW || w.colW.length !== w.days.length) w.colW = Array(w.days.length).fill(1);
+    // ältere Raster-Pläne (Spalte/Zeile) in Rechtecke umwandeln
+    if (w.blocks.some(b => b.x == null) || w.rowH || w.rows) {
+      const rowH = w.rowH || Array(w.rows || 3).fill(1);
+      w.blocks = fromGrid(w.colW, rowH, w.blocks.filter(b => b.x == null));
+      delete w.rowH; delete w.rows;
+    }
+    w.blocks.forEach(b => {
+      if (!b.imgs) b.imgs = [];
+      if (b.img) { b.imgs.push({ id: uid(), src: b.img, mode: "top", w: (b.imgW || 4) * 10, x: 0, y: 0, behind: false, ar: 0.75 }); delete b.img; delete b.imgW; }
+      if (b.icon == null) b.icon = "";
+    });
+  });
+  return p;
+}
+
+let plan = migrate(load(STORE_KEY) || load("ferienplaner.v1"));
+let planName = load("ferienplaner.name") || "";   // Dateiname (ohne .json) des geöffneten Plans
+let lib = load(LIB_KEY) || defaultLib();
+let selectedId = null, selImg = null;
+const NEW_TITLE = "Neues Angebot";
+let ui = Object.assign({ float: true, pos: null, min: false, open: {} }, load("ferienplaner.ui") || {});
+if (!ui.open) ui.open = {};
+
+let focusTitle = false; // nach „＋ Feld“ direkt in den Titel springen
+let layout = null; // zuletzt berechnete Maße (mm) der aktuellen Woche
+const undoStack = [];
+
+function load(key) { try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : null; } catch (e) { try { return localStorage.getItem(key); } catch (e2) { return null; } } }
+function persist() {
+  // Browser-Speicher ist nur Absturzschutz – im Schulnetz wird er beim Schließen gelöscht. Richtig gespeichert wird in Dateien.
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(plan)); localStorage.setItem("ferienplaner.name", planName); } catch (e) {}
+  try { localStorage.setItem(LIB_KEY, JSON.stringify(lib)); } catch (e) {}
+  if (typeof markDirty === "function") markDirty();
+}
+function snapshot() { undoStack.push(JSON.stringify(plan)); if (undoStack.length > 80) undoStack.shift(); }
+function undo() {
+  const s = undoStack.pop(); if (!s) return toast("Nichts zum Rückgängigmachen");
+  plan = JSON.parse(s); if (!findBlock(selectedId)) selectedId = null; persist(); renderAll();
+}
+function change(fn) { snapshot(); fn(); persist(); renderAll(); }
+
+const week = () => plan.weeks[plan.active] || plan.weeks[0];
+const findBlock = (id) => id && week().blocks.find(b => b.id === id);
+
+/* ============================================================
+   Geometrie: jedes Feld ist ein Rechteck (x, y, w, h als Anteil 0…1 der Tabellenfläche).
+   Die Felder füllen die Fläche lückenlos; leere Bereiche sind Felder mit empty = true.
+   ============================================================ */
+const EPS = 1e-4;
+const MIN_W = 12, MIN_H = 8;          // Mindestgröße eines Felds in mm
+const near = (a, b) => Math.abs(a - b) < EPS;
+const usableW = () => PAGE_W - 2 * plan.margin;
+const bodyH = () => layout ? layout.bodyH : 150;
+/** Gewichte → kumulierte Anteile [0, …, 1] */
+function fracs(weights) {
+  const s = weights.reduce((a, b) => a + b, 0) || 1; let a = 0;
+  const out = [0]; weights.forEach(v => { a += v / s; out.push(a); }); out[out.length - 1] = 1;
+  return out;
+}
+const avg = (a) => a.reduce((x, y) => x + y, 0) / a.length;
+function sortTiles(list) { return list.sort((a, b) => a.y - b.y || a.x - b.x); }
+function emptyTile(x, y, w, h) { return block({ x, y, w, h, empty: true }); }
+
+/** Raster (Spalten/Zeilen) → Rechtecke; nicht belegte Zellen werden leere Felder */
+function fromGrid(colW, rowH, items) {
+  const cx = fracs(colW), ry = fracs(rowH), occ = {};
+  const out = items.map(it => {
+    const { col = 0, row = 0, cs = 1, rs = 1, ...rest } = it;
+    for (let r = row; r < row + rs; r++) for (let c = col; c < col + cs; c++) occ[r + ":" + c] = 1;
+    return block(Object.assign(rest, { x: cx[col], w: cx[col + cs] - cx[col], y: ry[row], h: ry[row + rs] - ry[row], empty: false }));
+  });
+  for (let r = 0; r < rowH.length; r++) for (let c = 0; c < colW.length; c++)
+    if (!occ[r + ":" + c]) out.push(emptyTile(cx[c], ry[r], cx[c + 1] - cx[c], ry[r + 1] - ry[r]));
+  return sortTiles(out);
+}
+
+const CONTENT = { icon: "", title: "", hash: false, time: "", desc: "", note: "", contact: "", color: "#FFFFFF", fs: null, imgs: [], list: null };
+function contentOf(t) {
+  const c = {}; for (const k of Object.keys(CONTENT)) c[k] = t[k] ?? CONTENT[k];
+  c.imgs = (c.imgs || []).map(i => Object.assign({}, i, { id: uid() }));
+  return JSON.parse(JSON.stringify(c));
+}
+function fillTile(b, t) { Object.assign(b, contentOf(t), { empty: false }); }
+function clearTile(b) { Object.assign(b, JSON.parse(JSON.stringify(CONTENT)), { empty: true }); }
+
+/** Achsen-Helfer: "v" = senkrechte Linie (x-Richtung wird verschoben), "h" = waagerechte Linie */
+const S = (b, ax) => ax === "v" ? b.x : b.y;
+const E = (b, ax) => ax === "v" ? b.x + b.w : b.y + b.h;
+const span = (b, ax) => ax === "v" ? [b.y, b.y + b.h] : [b.x, b.x + b.w];
+const overlaps = (b, ax, s0, s1) => { const [p, q] = span(b, ax); return Math.min(q, s1) - Math.max(p, s0) > EPS; };
+
+/** Alle Felder, die an einem Linienstück liegen: A endet an der Linie, B beginnt dort.
+ *  Das Stück wächst, bis es an beiden Enden „sauber“ ist – so ändern sich nur die betroffenen Felder. */
+function cluster(w, ax, e, s0, s1) {
+  let A = [], B = [], grow = true;
+  while (grow) {
+    grow = false;
+    A = w.blocks.filter(b => near(E(b, ax), e) && overlaps(b, ax, s0, s1));
+    B = w.blocks.filter(b => near(S(b, ax), e) && overlaps(b, ax, s0, s1));
+    for (const b of [...A, ...B]) {
+      const [p, q] = span(b, ax);
+      if (p < s0 - EPS) { s0 = p; grow = true; }
+      if (q > s1 + EPS) { s1 = q; grow = true; }
+    }
+  }
+  return { A, B, s0, s1 };
+}
+/** Ganze Linien quer über die Tabelle (kein Feld liegt darüber) */
+function fullLines(w, ax) {
+  const vals = new Set([0, 1]);
+  w.blocks.forEach(b => { vals.add(+S(b, ax).toFixed(6)); vals.add(+E(b, ax).toFixed(6)); });
+  return [...vals].sort((a, b) => a - b).filter(v => !w.blocks.some(b => S(b, ax) < v - EPS && E(b, ax) > v + EPS))
+    .filter((v, i, arr) => i === 0 || v - arr[i - 1] > EPS);
+}
+/** Zeilen-Bänder: Bereiche zwischen zwei durchgehenden waagerechten Linien */
+function bands(w) { const L = fullLines(w, "h"); return L.slice(0, -1).map((y0, i) => [y0, L[i + 1]]); }
+
+/* ============================================================
+   Rendering
+   ============================================================ */
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const md = (s) => esc(s).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>");
+const fsOf = (b) => b.fs || plan.fontSize;
+const titleText = () => [plan.deco, plan.title, plan.deco].filter(Boolean).join(" ");
+
+function renderAll() { renderTabs(); renderSheet(); renderLib(); renderRight(); }
+
+function newWeek(name, start, nDays, colW) {
+  const days = datesFor(start, nDays) || ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag"].slice(0, nDays);
+  const cw = colW || Array(nDays).fill(1);
+  return { id: uid(), name, start, days, colW: [...cw], blocks: fromGrid(cw, [1, 1, 1], []) };
+}
+
+function renderTabs() {
+  const t = $("tabs"); t.innerHTML = "";
+  plan.weeks.forEach((w, i) => {
+    const el = document.createElement("div");
+    el.className = "tab" + (i === plan.active ? " active" : "");
+    el.textContent = w.name; el.title = "Doppelklick zum Umbenennen";
+    el.onclick = () => { if (plan.active !== i) { plan.active = i; selectedId = null; selImg = null; persist(); renderAll(); } };
+    el.ondblclick = () => { const n = prompt("Name der Woche:", w.name); if (n) change(() => w.name = n); };
+    t.appendChild(el);
+  });
+  const add = mk("button", "small", "＋ Woche"); add.title = "Neue Woche (eigene Seite)";
+  add.onclick = () => change(() => {
+    const last = week();
+    plan.weeks.push(newWeek("Woche " + (plan.weeks.length + 1), addDays(last.start, 7), last.days.length, last.colW));
+    plan.active = plan.weeks.length - 1; selectedId = null;
+  });
+  t.appendChild(add);
+  if (plan.weeks.length > 1) {
+    const del = mk("button", "small danger", "Woche löschen");
+    del.onclick = () => { if (confirm(`„${week().name}“ wirklich löschen?`)) change(() => { plan.weeks.splice(plan.active, 1); plan.active = Math.max(0, plan.active - 1); selectedId = null; }); };
+    t.appendChild(del);
+  }
+}
+function mk(tag, cls, txt) { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; }
+function mkBtn(txt, title, fn, cls) {
+  const b = mk("button", "small " + (cls || ""), txt); b.title = title;
+  b.onclick = (e) => { e.stopPropagation(); fn(); }; return b;
+}
+
+function applyThemeVars(el) {
+  el.style.setProperty("--t-head", plan.headColor);
+  el.style.setProperty("--t-title", plan.titleColor);
+  el.style.setProperty("--t-accent", plan.accentColor);
+  el.style.setProperty("--t-note", plan.noteColor);
+  el.style.setProperty("--t-line", plan.lineColor);
+}
+
+/** Seite so groß wie möglich, aber immer komplett sichtbar (Breite und Höhe) */
+function fitZoom() {
+  const stage = $("stage");
+  const availW = stage.clientWidth - 8 - 40;                     // rechts Platz für Zeilenwerkzeuge
+  const top = stage.getBoundingClientRect().top + scrollY;
+  const availH = innerHeight - top - 36;
+  const z = Math.max(0.45, Math.min(availW / (PAGE_W * PX), availH / (PAGE_H * PX), 1.6));
+  $("page").style.transform = `scale(${z})`;
+  $("zoomwrap").style.width = (PAGE_W * PX * z + 40) + "px";
+  $("zoomwrap").style.height = (PAGE_H * PX * z + 30) + "px";
+  return z;
+}
+let Z = 1;
+
+/** Position eines Felds auf der Seite (mm) */
+function placeEl(el, b) {
+  const U = usableW(), H = bodyH();
+  el.style.left = b.x * U + "mm"; el.style.width = b.w * U + "mm";
+  el.style.top = plan.headH + b.y * H + "mm"; el.style.height = b.h * H + "mm";
+}
+
+function renderSheet() {
+  const w = week(), page = $("page");
+  Z = fitZoom();
+  applyThemeVars(page);
+  page.style.padding = plan.margin + "mm";
+  page.innerHTML = "";
+
+  const title = mk("div", "ptitle");
+  title.innerHTML = `<span class="t" style="font-size:${plan.titleSize}pt">${esc(titleText())}</span><span class="s" style="font-size:${Math.round(plan.titleSize * 0.65)}pt">${esc(plan.subtitle)}</span>`;
+  const gw = mk("div", "gridwrap");
+  const notes = mk("div", "pnotes");
+  notes.style.fontSize = plan.fontSize + "pt";
+  notes.innerHTML = plan.footer.trim() ? plan.footer.split("\n").map(l => `<p>${md(l) || "&nbsp;"}</p>`).join("") : "";
+  if (!plan.footer.trim()) notes.style.display = "none";
+  page.append(title, gw, notes);
+
+  // verfügbare Höhe für die Tabelle messen (unskaliert)
+  const availH = gw.offsetHeight / PX - SAFETY;
+  layout = { availH, bodyH: Math.max(10, availH - plan.headH) };
+  const U = usableW(), H = bodyH(), cx = fracs(w.colW);
+
+  const g = mk("div", "grid");
+  g.id = "grid";
+  g.style.width = U + "mm"; g.style.height = (plan.headH + H) + "mm";
+  g.style.fontSize = plan.fontSize + "pt";
+  gw.appendChild(g);
+
+  // Kopfzeile mit Tagen
+  w.days.forEach((d, c) => {
+    const h = mk("div", "gh");
+    h.style.left = cx[c] * U + "mm"; h.style.width = (cx[c + 1] - cx[c]) * U + "mm"; h.style.top = 0; h.style.height = plan.headH + "mm";
+    h.style.fontSize = (plan.fontSize + 1) + "pt";
+    const inp = mk("input"); inp.type = "text"; inp.value = d;
+    inp.onfocus = () => snapshot();
+    inp.oninput = () => { w.days[c] = inp.value; persist(); };
+    const tools = mk("div", "col-tools");
+    tools.append(mkBtn("◀", "Tag nach links", () => moveCol(c, -1)), mkBtn("▶", "Tag nach rechts", () => moveCol(c, 1)), mkBtn("✕", "Tag löschen", () => delCol(c), "danger"));
+    h.append(inp, tools);
+    g.appendChild(h);
+  });
+
+  for (const b of w.blocks) g.appendChild(b.empty ? renderEmpty(b) : renderBlock(b));
+
+  // Ziehbare Ränder: an allen vier Kanten jedes Angebots, jeweils innen am eigenen Rand.
+  // So fasst man genau das Feld an, das man ändern will.
+  for (const b of w.blocks) {
+    if (b.empty) continue;
+    const edges = [["v", "end"], ["v", "start"], ["h", "end"], ["h", "start"]];
+    for (const [ax, side] of edges) {
+      const pos = side === "end" ? E(b, ax) : S(b, ax);
+      if (near(pos, 0) || near(pos, 1)) continue;            // Außenrand der Tabelle
+      const d = mk("div", `divider ${ax} in-${side}`);
+      if (ax === "v") { d.style.left = pos * U + "mm"; d.style.top = plan.headH + b.y * H + "mm"; d.style.height = b.h * H + "mm"; }
+      else { d.style.top = plan.headH + pos * H + "mm"; d.style.left = b.x * U + "mm"; d.style.width = b.w * U + "mm"; }
+      const [s0, s1] = span(b, ax);
+      d.onpointerdown = (e) => startEdge(e, ax, pos, s0, s1, d, 0, b, side);
+      gw.appendChild(d);
+    }
+  }
+  // Linien zwischen den Tagen in der Kopfzeile: verschieben die ganze Linie
+  for (let c = 1; c < w.days.length; c++) {
+    const d = mk("div", "divider v head");
+    d.style.left = cx[c] * U + "mm"; d.style.top = 0; d.style.height = plan.headH + "mm";
+    d.onpointerdown = (e) => startEdge(e, "v", cx[c], 0, 1, d, c);
+    gw.appendChild(d);
+  }
+  // Werkzeuge je Zeilen-Band rechts neben der Seite
+  bands(w).forEach(([y0, y1], k, all) => {
+    const rt = mk("div", "rowtools");
+    rt.style.left = (U + plan.margin * 0.25) + "mm";
+    rt.style.top = (plan.headH + y0 * H) + "mm"; rt.style.height = (y1 - y0) * H + "mm";
+    rt.style.transform = `scale(${1 / Math.max(Z, .6)})`; rt.style.transformOrigin = "left center";
+    rt.append(mkBtn("▲", "Zeile nach oben", () => moveBand(k, -1)), mkBtn("✕", "Zeile löschen", () => delBand(k), "danger"), mkBtn("▼", "Zeile nach unten", () => moveBand(k, 1)));
+    if (k === 0) rt.firstChild.disabled = true;
+    if (k === all.length - 1) rt.lastChild.disabled = true;
+    gw.appendChild(rt);
+  });
+  wireDropTargets();
+  checkOverflow();
+  renderCtx();
+}
+
+function renderEmpty(b) {
+  const cell = mk("div", "cell"); placeEl(cell, b);
+  cell.dataset.id = b.id;
+  cell.appendChild(mkBtn("＋ Feld", "Neues Angebot in diesen Bereich", () => {
+    focusTitle = true;
+    change(() => { fillTile(b, { title: NEW_TITLE }); selectedId = b.id; selImg = null; });
+  }, "add"));
+  return cell;
+}
+
+function renderBlock(b) {
+  const el = mk("div", "block" + (b.id === selectedId ? " selected" : ""));
+  placeEl(el, b);
+  el.style.background = b.color;
+  el.style.setProperty("--fs", fsOf(b) + "pt");
+  el.dataset.id = b.id;
+  el.draggable = true;
+  if (b.imgs.some(isFloatImg)) el.classList.add("imgfree");
+
+  el.appendChild(renderContent(b));
+
+  if (b.id === selectedId) {
+    const kr = mk("div", "knob kr", "+"); kr.title = "Mit dem Feld rechts daneben verbinden";
+    const kb = mk("div", "knob kb", "+"); kb.title = "Mit dem Feld darunter verbinden";
+    kr.onpointerdown = kb.onpointerdown = (e) => e.stopPropagation();
+    kr.onclick = (e) => { e.stopPropagation(); merge(b, "right"); };
+    kb.onclick = (e) => { e.stopPropagation(); merge(b, "down"); };
+    if (E(b, "v") < 1 - EPS) el.append(kr);
+    if (E(b, "h") < 1 - EPS) el.append(kb);
+  }
+
+  el.onclick = (e) => {
+    if (e.target.closest(".imgbox") || justDragged) return;
+    const sp = e.target.closest("[data-k]");
+    if (sp && selectedId === b.id && !selImg) return startInline(e, b, sp);   // Text im ausgewählten Feld anklicken = direkt schreiben
+    if (selectedId !== b.id || selImg) { selectedId = b.id; selImg = null; renderSheet(); renderRight(); }
+  };
+  // Doppelklick auf Text: auswählen und sofort losschreiben
+  el.ondblclick = (e) => {
+    const sp = e.target.closest("[data-k]"); if (!sp || e.target.closest(".imgbox")) return;
+    if (selectedId !== b.id || selImg) { selectedId = b.id; selImg = null; renderSheet(); renderRight(); }
+    const ns = document.querySelector(`#grid .block[data-id="${b.id}"] [data-k="${sp.dataset.k}"]`);
+    if (ns) startInline(e, b, ns);
+  };
+  el.ondragstart = (e) => {
+    if (busy || e.target.closest(".imgbox, .knob")) { e.preventDefault(); return; }
+    e.dataTransfer.setData("text/plain", "block:" + b.id); e.dataTransfer.effectAllowed = "move";
+    dragInfo = { kind: "block", id: b.id };
+    setTimeout(() => el.classList.add("dragging"), 0);
+  };
+  el.ondragend = () => { el.classList.remove("dragging"); dragInfo = null; };
+  // Bilddateien direkt auf ein Feld ziehen
+  el.addEventListener("dragover", (e) => { if (!dragInfo && e.dataTransfer.types.includes("Files")) { e.preventDefault(); el.classList.add("imgdrop"); } });
+  el.addEventListener("dragleave", () => el.classList.remove("imgdrop"));
+  el.addEventListener("drop", (e) => {
+    if (dragInfo || !e.dataTransfer.files.length) return;
+    e.preventDefault(); el.classList.remove("imgdrop");
+    selectedId = b.id; addImages(b, [...e.dataTransfer.files]);
+  });
+  return el;
+}
+
+/** Textabsätze eines Felds (gleiche Reihenfolge wie im Word-Export) */
+function textParas(b) {
+  return [
+    `<p class="b-title">${[b.icon, b.hash ? "#" : "", `<span data-k="title">${esc(b.title)}</span>`].filter(Boolean).join(" ")}</p>`,
+    b.time && `<p class="b-time"><span data-k="time">${esc(b.time)}</span></p>`,
+    b.desc && `<p class="b-desc"><span data-k="desc">${md(b.desc)}</span></p>`,
+    b.note && `<p class="b-note"><span data-k="note">${md(b.note)}</span></p>`,
+    b.contact && `<p class="b-contact">Ansprechpartner: <span data-k="contact">${esc(b.contact)}</span></p>`,
+  ].filter(Boolean);
+}
+const imgsAt = (b, mode) => b.imgs.filter(i => i.mode === mode);
+/** Bilder, die frei im Feld stehen und vom Text umflossen werden (links/rechts) bzw. übersprungen (mittig) */
+const isFloatImg = (i) => ["left", "right", "center"].includes(i.mode);
+const IMG_GAP = 2.5;   // mm Abstand zwischen Bild und Text
+function renderContent(b) {
+  const content = mk("div", "content");
+  const row = (mode) => { const l = imgsAt(b, mode); if (l.length) { const p = mk("p", "b-imgs"); l.forEach(i => p.appendChild(renderImg(b, i))); content.appendChild(p); } };
+  row("top");
+  // Bilder links/rechts: frei in der Höhe (oy) und im Abstand zum Rand (ox), Text fließt drumherum.
+  // Ein unsichtbarer Abstandhalter schiebt das Bild auf die gewünschte Höhe.
+  let used = 0;
+  b.imgs.filter(isFloatImg).sort((a, c) => (a.oy || 0) - (c.oy || 0)).forEach(i => {
+    const sp = mk("div", "fspacer");
+    sp.style.height = Math.max(0, (i.oy || 0) - used) + "mm";
+    content.appendChild(sp);
+    content.appendChild(renderImg(b, i));
+    used = Math.max(used, i.oy || 0) + i.w * (i.ar || 0.75) + IMG_GAP;
+  });
+  textParas(b).forEach(html => content.insertAdjacentHTML("beforeend", html));
+  row("bottom");
+  imgsAt(b, "free").forEach(i => content.appendChild(renderImg(b, i)));
+  return content;
+}
+function refreshBlock(b) {
+  const old = document.querySelector(`#grid .block[data-id="${b.id}"] .content`);
+  if (old) old.replaceWith(renderContent(b));
+  scheduleOverflowCheck();
+}
+function renderImg(b, i) {
+  const box = mk("div", "imgbox" + (i.mode === "free" ? " free" : "") + (i.mode === "left" || i.mode === "center" ? " fl" : "") + (i.mode === "right" ? " fr" : "") +
+    (i.behind && i.mode === "free" ? " behind" : "") + (selImg === i.id ? " sel" : ""));
+  box.style.width = i.w + "mm";
+  if (i.mode === "left" || i.mode === "center") box.style.marginLeft = (i.ox || 0) + "mm";
+  if (i.mode === "right") box.style.marginRight = (i.ox || 0) + "mm";
+  // mittig: Bild belegt die ganze Zeilenbreite → Text springt darüber/darunter weiter
+  if (i.mode === "center") box.style.marginRight = `calc(100% - ${(i.ox || 0) + i.w}mm)`;
+  if (i.mode === "free") { box.style.left = i.x + "mm"; box.style.top = i.y + "mm"; }
+  box.draggable = false;
+  const img = mk("img"); img.alt = ""; img.draggable = false;
+  img.onload = scheduleOverflowCheck; img.src = i.src;
+  const h = mk("div", "ih"); h.title = "Größe ändern";
+  const x = mk("button", "ix", "✕"); x.title = "Bild löschen";
+  x.onpointerdown = (e) => e.stopPropagation();
+  x.onclick = (e) => { e.stopPropagation(); change(() => { b.imgs = b.imgs.filter(o => o.id !== i.id); selImg = null; }); };
+  box.append(img, h, x);
+  box.onpointerdown = (e) => startImgDrag(e, b, i, box, e.target === h ? "resize" : "move");
+  box.onclick = (e) => e.stopPropagation();
+  return box;
+}
+
+/* ---------- Direkt im Feld schreiben ---------- */
+const FIELD_INPUT = { title: "fTitle", time: "fTime", desc: "fDesc", note: "fNote", contact: "fContact" };
+const MULTILINE = ["desc", "note"];
+/** Textstück eines ausgewählten Felds direkt auf der Seite bearbeiten */
+function startInline(e, b, span, selectAll, noSnap) {
+  if (!b || span.isContentEditable) return;
+  if (e) e.stopPropagation();
+  const k = span.dataset.k, before = b[k] || "";
+  if (!noSnap) snapshot();   // noSnap: Rückgängig-Schritt wurde schon angelegt (z. B. „＋ Text“)
+  const blockEl = span.closest(".block"); blockEl.draggable = false; blockEl.classList.add("editing");
+  if (MULTILINE.includes(k)) span.textContent = before;   // beim Schreiben **fett** als Zeichen zeigen
+  span.contentEditable = "plaintext-only";
+  span.focus();
+  const sel = getSelection();
+  const at = e && document.caretRangeFromPoint ? document.caretRangeFromPoint(e.clientX, e.clientY) : null;
+  sel.removeAllRanges();
+  if (selectAll || before === NEW_TITLE || !at || !span.contains(at.startContainer)) {
+    const r = document.createRange(); r.selectNodeContents(span);
+    if (!selectAll && before !== NEW_TITLE) r.collapse(false);
+    sel.addRange(r);
+  } else sel.addRange(at);
+  span.oninput = () => {
+    b[k] = span.innerText.replace(/\n$/, "");
+    const f = $(FIELD_INPUT[k]); if (f && $("rightBody").dataset.for === b.id) f.value = b[k];
+    persist(); scheduleOverflowCheck(); positionCtx();
+  };
+  span.onkeydown = (ev) => {
+    ev.stopPropagation();
+    if (ev.key === "Escape" || (ev.key === "Enter" && (!MULTILINE.includes(k) || ev.ctrlKey))) { ev.preventDefault(); span.blur(); }
+  };
+  span.onpaste = (ev) => { ev.preventDefault(); document.execCommand("insertText", false, ev.clipboardData.getData("text/plain")); };
+  span.onblur = () => {
+    span.removeAttribute("contenteditable");
+    blockEl.classList.remove("editing");
+    if (k !== "title") b[k] = (b[k] || "").trim();
+    if ((b[k] || "") === before && !noSnap) undoStack.pop();
+    persist(); renderSheet(); renderRight();
+  };
+}
+
+/* ---------- Leiste am ausgewählten Feld ---------- */
+const ADDABLE = [["time", "🕘 Uhrzeit", "9:00 – 12:00 Uhr"], ["desc", "📝 Beschreibung", "Beschreibung"], ["note", "❗ Hinweis (fett)", "Wichtiger Hinweis"], ["contact", "👤 Ansprechpartner", "Name"]];
+function renderCtx() {
+  const C = $("ctx"), b = findBlock(selectedId);
+  const el = b && document.querySelector(`#grid .block[data-id="${b.id}"]`);
+  closePop();
+  if (!b || b.empty || !el || selImg || !$("lmodal").hidden) { C.hidden = true; return; }
+  C.innerHTML = ""; C.hidden = false;
+  const btn = (html, title, fn, cls) => {
+    const x = mk("button", cls || ""); x.innerHTML = html; x.title = title;
+    x.onpointerdown = (ev) => ev.preventDefault();        // Schreibmarke im Text behalten
+    x.onclick = (ev) => { ev.stopPropagation(); fn(x); };
+    C.appendChild(x); return x;
+  };
+  const gap = () => C.appendChild(mk("i", "sep"));
+  const pal = (THEMES[plan.theme] || THEMES.klassisch).palette;
+  btn(`<span class="dot" style="background:${b.color}"></span>`, "Hintergrundfarbe", (x) => {
+    const P = mk("div", "swatches");
+    pal.forEach(c => { const s = mk("span"); s.style.background = c; s.title = c; if (c.toLowerCase() === (b.color || "").toLowerCase()) s.className = "on"; s.onclick = () => change(() => b.color = c); P.appendChild(s); });
+    const cu = mk("input"); cu.type = "color"; cu.value = b.color; cu.title = "Eigene Farbe"; cu.className = "cpick";
+    cu.onchange = () => change(() => b.color = cu.value.toUpperCase()); P.appendChild(cu);
+    openPop(x, P);
+  });
+  btn(b.icon || "😀", "Symbol", (x) => {
+    const P = mk("div", "emojis");
+    EMOJIS.forEach(em => { const t = mk("button", em === (b.icon || "") ? "on" : "", em || "∅"); t.title = em ? "Symbol " + em : "kein Symbol"; t.onclick = () => change(() => b.icon = em); P.appendChild(t); });
+    openPop(x, P);
+  });
+  gap();
+  btn("A−", "Schrift kleiner", () => change(() => b.fs = Math.max(5, fsOf(b) - 0.5)));
+  btn(`<small>${fsOf(b)}</small>`, "Schriftgröße – klicken für Standard", () => change(() => b.fs = null), "lbl");
+  btn("A+", "Schrift größer", () => change(() => b.fs = Math.min(20, fsOf(b) + 0.5)));
+  gap();
+  btn("#", "Interessenliste an/aus", () => change(() => b.hash = !b.hash), b.hash ? "on" : "");
+  const missing = ADDABLE.filter(([k]) => !b[k]);
+  if (missing.length) btn("＋ Text", "Uhrzeit, Beschreibung, Hinweis oder Ansprechpartner hinzufügen", (x) => {
+    const P = mk("div", "menu");
+    missing.forEach(([k, label, ph]) => {
+      const t = mk("button", "", label);
+      t.onclick = () => {
+        change(() => b[k] = ph);
+        const sp = document.querySelector(`#grid .block[data-id="${b.id}"] [data-k="${k}"]`);
+        if (sp) startInline(null, b, sp, true, true);
+      };
+      P.appendChild(t);
+    });
+    openPop(x, P);
+  });
+  gap();
+  btn("◫", "Teilen: nebeneinander", () => split(b, "v"));
+  btn("⬒", "Teilen: untereinander", () => split(b, "h"));
+  btn("⧉", "Kopie in das nächste freie Feld", () => duplicate(b));
+  btn("🧱", "Im Baukasten merken", () => remember(b));
+  gap();
+  btn("⚙", "Alle Einstellungen im Fenster", () => { ui.min = false; saveUi(); applyWindowMode(); placeWindow(); });
+  btn("🗑", "Feld leeren (Entf)", deleteSelected, "danger");
+  positionCtx();
+}
+function positionCtx() {
+  const C = $("ctx"); if (C.hidden) return;
+  const el = document.querySelector(`#grid .block[data-id="${selectedId}"]`); if (!el) return;
+  const r = el.getBoundingClientRect(), W = C.offsetWidth, H = C.offsetHeight;
+  let y = r.top - H - 8;
+  if (y < 64) y = r.bottom + 8;
+  const x = Math.max(8, Math.min(innerWidth - W - 8, r.left + r.width / 2 - W / 2));
+  C.style.left = x + "px"; C.style.top = y + "px";
+  positionPop();
+}
+let popAnchor = null;
+function openPop(anchor, content) {
+  if (popAnchor === anchor) return closePop();
+  closePop();
+  const P = $("ctxpop"); P.appendChild(content); P.hidden = false;
+  anchor.classList.add("open"); popAnchor = anchor; positionPop();
+}
+function closePop() {
+  const P = $("ctxpop"); if (P) { P.hidden = true; P.innerHTML = ""; }
+  if (popAnchor) popAnchor.classList.remove("open");
+  popAnchor = null;
+}
+function positionPop() {
+  const P = $("ctxpop"); if (P.hidden || !popAnchor) return;
+  const C = $("ctx").getBoundingClientRect(), a = popAnchor.getBoundingClientRect();
+  const W = P.offsetWidth, H = P.offsetHeight;
+  let y = C.bottom + 6; if (y + H > innerHeight - 8) y = C.top - H - 6;
+  P.style.left = Math.max(8, Math.min(innerWidth - W - 8, a.left)) + "px"; P.style.top = y + "px";
+}
+function duplicate(b) {
+  if (!firstFree(week())) addRow();
+  const f = firstFree(week());
+  change(() => { fillTile(f, b); selectedId = f.id; selImg = null; });
+}
+function remember(b) {
+  lib.push(Object.assign(contentOf(b), { id: uid() }));
+  persist(); renderLib(); toast(`„${b.title}“ im Baukasten gespeichert`);
+}
+
+/* ---------- Überlauf prüfen ---------- */
+function checkOverflow() {
+  let n = 0;
+  document.querySelectorAll("#grid .block").forEach(el => {
+    const c = el.querySelector(".content");
+    const over = c.offsetHeight > el.clientHeight - 2 * PX + 1;
+    el.classList.toggle("overflow", over);
+    if (over) n++;
+  });
+  const s = $("status");
+  const tooSmall = week().blocks.some(b => b.h * bodyH() < MIN_H - 0.5);
+  if (n || tooSmall) { s.className = "status warn"; s.textContent = n ? `⚠ ${n} Feld${n > 1 ? "er" : ""} mit zu viel Text` : "⚠ Felder sehr niedrig"; }
+  else { s.className = "status"; s.textContent = "✔ passt auf 1 Seite"; }
+  $("btnFit").disabled = !n;
+  return n;
+}
+let ocT; function scheduleOverflowCheck() { clearTimeout(ocT); ocT = setTimeout(checkOverflow, 30); }
+/** Schrift in übervollen Feldern schrittweise verkleinern */
+function autoFit() {
+  snapshot();
+  let changed = 0;
+  document.querySelectorAll("#grid .block.overflow").forEach(el => {
+    const b = findBlock(el.dataset.id); if (!b) return;
+    const c = el.querySelector(".content");
+    let fs = fsOf(b);
+    while (c.offsetHeight > el.clientHeight - 2 * PX + 1 && fs > 6) { fs -= 0.5; el.style.setProperty("--fs", fs + "pt"); }
+    if (fs !== fsOf(b)) { b.fs = fs; changed++; }
+  });
+  if (!changed) undoStack.pop();
+  persist(); renderAll();
+  const left = checkOverflow();
+  toast(left ? "Einige Felder sind immer noch zu voll – Text kürzen oder Zeile höher ziehen." : "✨ Alles passt!");
+}
+
+/* ---------- Drag & Drop: Bausteine einsetzen, Felder tauschen ---------- */
+let dragInfo = null, busy = false;
+function wireDropTargets() {
+  document.querySelectorAll("#grid .cell, #grid .block").forEach(el => {
+    const target = () => findBlock(el.dataset.id);
+    const ok = () => {
+      const t = target(); if (!dragInfo || !t) return false;
+      if (dragInfo.kind === "lib" || dragInfo.kind === "tpl") return t.empty;
+      if (dragInfo.kind === "img") return true;
+      return dragInfo.id !== t.id;
+    };
+    el.addEventListener("dragover", (e) => { if (!dragInfo) return; if (ok()) { e.preventDefault(); el.classList.add("drop-ok"); } else el.classList.add("drop-bad"); });
+    el.addEventListener("dragleave", () => el.classList.remove("drop-ok", "drop-bad"));
+    el.addEventListener("drop", (e) => {
+      el.classList.remove("drop-ok", "drop-bad");
+      const d = dragInfo; if (!d) return;
+      e.preventDefault(); dragInfo = null;
+      const t = target(); if (!t) return;
+      if (d.kind === "lib" || d.kind === "tpl") {
+        const tpl = d.tpl || lib.find(x => x.id === d.id); if (!tpl || !t.empty) return;
+        change(() => { fillTile(t, tpl); selectedId = t.id; selImg = null; });
+      } else if (d.kind === "img") {
+        // Bild aus der Bibliothek: in ein Angebot – oder in ein leeres Feld (wird dann ein neues Angebot)
+        imageData(d.img).then(data => {
+          if (t.empty) { snapshot(); fillTile(t, { title: NEW_TITLE }); undoStack.pop(); }
+          selectedId = t.id; addImageData(t, [data]);
+        }).catch(() => toast("Bild konnte nicht gelesen werden."));
+      } else {
+        const b = findBlock(d.id); if (!b || b === t) return;
+        // Felder tauschen ihre Plätze (Größe/Position wandert mit dem Platz)
+        change(() => {
+          for (const k of ["x", "y", "w", "h"]) [b[k], t[k]] = [t[k], b[k]];
+          sortTiles(week().blocks); selectedId = b.id;
+        });
+      }
+    });
+  });
+}
+
+/* ---------- Pointer-Interaktionen ---------- */
+/** Zeiger-Bewegung in mm (Seitenmaßstab) verfolgen */
+function track(e, onMove, onUp) {
+  e.preventDefault(); e.stopPropagation();
+  busy = true;
+  const x0 = e.clientX, y0 = e.clientY;
+  const move = (ev) => onMove((ev.clientX - x0) / (Z * PX), (ev.clientY - y0) / (Z * PX), ev);
+  const up = (ev) => {
+    window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up);
+    busy = false; onUp && onUp(ev);
+  };
+  window.addEventListener("pointermove", move); window.addEventListener("pointerup", up);
+}
+
+/** Linie ziehen: nur die Felder, die direkt an diesem Linienstück liegen, ändern ihre Größe.
+ *  headCol: Linie in der Kopfzeile → verschiebt auch die Tagesgrenze (und alles, was genau daran liegt). */
+function startEdge(e, ax, e0, s0, s1, el, headCol, own, side) {
+  const w = week(), U = usableW(), H = bodyH();
+  const L = ax === "v" ? U : H;                      // mm der Achse
+  const cl = cluster(w, ax, e0, s0, s1), { A, B } = cl;
+  // Reicht die Linie über das angefasste Feld hinaus (z. B. Nachbar über mehrere Tage)?
+  // Dann nur dieses eine Feld ändern – frei werdender Platz wird ein leeres Feld.
+  // Gemeinsam verschieben nur, wenn genau zwei gleich lange Felder aneinanderliegen; sonst nur das angefasste Feld.
+  const pair = A.length === 1 && B.length === 1 && near(span(A[0], ax)[0], span(B[0], ax)[0]) && near(span(A[0], ax)[1], span(B[0], ax)[1]);
+  if (own && !pair) return soloEdge(e, ax, own, side, el);
+  const minF = (ax === "v" ? MIN_W : MIN_H) / L;
+  let lo = -Math.min(...A.map(b => E(b, ax) - S(b, ax) - minF), 1);
+  let hi = Math.min(...B.map(b => E(b, ax) - S(b, ax) - minF), 1);
+  const cx = fracs(w.colW);
+  if (headCol) { lo = Math.max(lo, -(cx[headCol] - cx[headCol - 1] - MIN_W / U)); hi = Math.min(hi, cx[headCol + 1] - cx[headCol] - MIN_W / U); }
+  if (!A.length && !headCol) return;
+  // Einrasten an anderen Kanten (±1,5 mm), sonst auf 0,5 mm runden
+  const snaps = new Set();
+  w.blocks.forEach(b => { snaps.add(S(b, ax)); snaps.add(E(b, ax)); });
+  if (ax === "v") cx.forEach(v => snaps.add(v));
+  const start = { A: A.map(b => [S(b, ax), E(b, ax)]), B: B.map(b => [S(b, ax), E(b, ax)]) };
+  snapshot();
+  el.classList.add("active");
+  let moved = false, pos = e0;
+  const tip = mk("div", "sizetip"); el.appendChild(tip);
+  const label = () => {
+    const a = A[0], b = B[0];
+    tip.textContent = [a && Math.round((E(a, ax) - S(a, ax)) * L), b && Math.round((E(b, ax) - S(b, ax)) * L)].filter(v => v != null).join(" | ") + " mm";
+  };
+  label();
+  track(e, (dx, dy) => {
+    let d = (ax === "v" ? dx : dy) / L;
+    let p = e0 + d;
+    let best = null;
+    snaps.forEach(v => { if (!near(v, e0) && Math.abs(v - p) * L < 1.5 && (best == null || Math.abs(v - p) < Math.abs(best - p))) best = v; });
+    p = best != null ? best : Math.round(p * L * 2) / 2 / L;
+    d = Math.max(lo, Math.min(hi, p - e0)); pos = e0 + d;
+    moved = moved || Math.abs(d) > EPS;
+    A.forEach((b, i) => { if (ax === "v") b.w = start.A[i][1] + d - b.x; else b.h = start.A[i][1] + d - b.y; });
+    B.forEach((b, i) => { if (ax === "v") { b.x = start.B[i][0] + d; b.w = start.B[i][1] - b.x; } else { b.y = start.B[i][0] + d; b.h = start.B[i][1] - b.y; } });
+    if (headCol) {
+      const ncx = [...cx]; ncx[headCol] = cx[headCol] + d;
+      w.colW = ncx.slice(1).map((v, i) => v - ncx[i]);
+      document.querySelectorAll("#grid .gh").forEach((h, c) => { h.style.left = fracs(w.colW)[c] * U + "mm"; h.style.width = w.colW[c] / w.colW.reduce((a, b) => a + b, 0) * U + "mm"; });
+    }
+    [...A, ...B].forEach(b => { const n = document.querySelector(`#grid [data-id="${b.id}"]`); if (n) placeEl(n, b); });
+    if (ax === "v") el.style.left = pos * U + "mm"; else el.style.top = plan.headH + pos * H + "mm";
+    label(); scheduleOverflowCheck();
+  }, () => {
+    if (!moved) undoStack.pop();
+    persist(); renderSheet(); renderRight();
+  });
+}
+
+/** Nur den Rand eines einzelnen Felds verschieben. Kleiner → Lücke wird leeres Feld,
+ *  größer → wächst nur in leere Felder hinein (nie in andere Angebote). */
+function soloEdge(e, ax, b, side, el) {
+  const w = week(), U = usableW(), H = bodyH(), L = ax === "v" ? U : H;
+  const minF = (ax === "v" ? MIN_W : MIN_H) / L;
+  const [s0, s1] = span(b, ax), a0 = S(b, ax), a1 = E(b, ax);
+  const blockers = w.blocks.filter(t => t !== b && !t.empty && overlaps(t, ax, s0, s1));
+  let lo, hi;
+  if (side === "end") { lo = -(a1 - a0 - minF); hi = Math.min(1, ...blockers.filter(t => S(t, ax) > a1 - EPS).map(t => S(t, ax))) - a1; }
+  else { hi = a1 - a0 - minF; lo = Math.max(0, ...blockers.filter(t => E(t, ax) < a0 + EPS).map(t => E(t, ax))) - a0; }
+  const e0 = side === "end" ? a1 : a0;
+  const snaps = new Set();
+  w.blocks.forEach(t => { snaps.add(S(t, ax)); snaps.add(E(t, ax)); });
+  if (ax === "v") fracs(w.colW).forEach(v => snaps.add(v));
+  snapshot();
+  el.classList.add("active");
+  const tip = mk("div", "sizetip"); el.appendChild(tip);
+  const node = document.querySelector(`#grid [data-id="${b.id}"]`);
+  const setGeo = (d) => {
+    const p = side === "end" ? a0 : a0 + d, q = side === "end" ? a1 + d : a1;
+    if (ax === "v") { b.x = p; b.w = q - p; } else { b.y = p; b.h = q - p; }
+  };
+  let d = 0;
+  tip.textContent = Math.round((a1 - a0) * L) + " mm";
+  track(e, (dx, dy) => {
+    let p = e0 + (ax === "v" ? dx : dy) / L, best = null;
+    snaps.forEach(v => { if (!near(v, e0) && Math.abs(v - p) * L < 1.5 && (best == null || Math.abs(v - p) < Math.abs(best - p))) best = v; });
+    p = best != null ? best : Math.round(p * L * 2) / 2 / L;
+    d = Math.max(lo, Math.min(hi, p - e0));
+    setGeo(d);
+    if (node) { placeEl(node, b); node.style.zIndex = 5; }
+    if (ax === "v") el.style.left = (e0 + d) * U + "mm"; else el.style.top = plan.headH + (e0 + d) * H + "mm";
+    tip.textContent = Math.round((E(b, ax) - S(b, ax)) * L) + " mm";
+    scheduleOverflowCheck();
+  }, () => {
+    if (Math.abs(d) < EPS) { undoStack.pop(); setGeo(0); renderSheet(); return; }
+    // betroffener Streifen zwischen alter und neuer Kante
+    const p = Math.min(e0, e0 + d), q = Math.max(e0, e0 + d);
+    const R = ax === "v" ? { x: p, y: s0, w: q - p, h: s1 - s0 } : { x: s0, y: p, w: s1 - s0, h: q - p };
+    const grew = side === "end" ? d > 0 : d < 0;
+    if (grew) carve(w, R);
+    else { const t = emptyTile(R.x, R.y, R.w, R.h); w.blocks.push(t); mergeEmptyAround(w, t); }
+    sortTiles(w.blocks);
+    persist(); renderSheet(); renderRight();
+  });
+}
+/** Rechteck R aus leeren Feldern herausschneiden (Reste bleiben als leere Felder) */
+function carve(w, R) {
+  const out = [];
+  w.blocks = w.blocks.filter(t => {
+    if (!t.empty) return true;
+    const ix0 = Math.max(t.x, R.x), ix1 = Math.min(t.x + t.w, R.x + R.w), iy0 = Math.max(t.y, R.y), iy1 = Math.min(t.y + t.h, R.y + R.h);
+    if (ix1 - ix0 < EPS || iy1 - iy0 < EPS) return true;
+    if (iy0 - t.y > EPS) out.push(emptyTile(t.x, t.y, t.w, iy0 - t.y));                       // oben
+    if (t.y + t.h - iy1 > EPS) out.push(emptyTile(t.x, iy1, t.w, t.y + t.h - iy1));           // unten
+    if (ix0 - t.x > EPS) out.push(emptyTile(t.x, iy0, ix0 - t.x, iy1 - iy0));                 // links
+    if (t.x + t.w - ix1 > EPS) out.push(emptyTile(ix1, iy0, t.x + t.w - ix1, iy1 - iy0));     // rechts
+    return false;
+  });
+  w.blocks.push(...out);
+}
+/** Neues leeres Feld mit passgenau angrenzenden leeren Feldern zusammenlegen (weniger Splitter) */
+function mergeEmptyAround(w, t) {
+  let again = true;
+  while (again) {
+    again = false;
+    for (const n of w.blocks) {
+      if (n === t || !n.empty) continue;
+      if (near(n.y, t.y) && near(n.h, t.h) && (near(n.x + n.w, t.x) || near(t.x + t.w, n.x))) { const x = Math.min(n.x, t.x); t.w += n.w; t.x = x; }
+      else if (near(n.x, t.x) && near(n.w, t.w) && (near(n.y + n.h, t.y) || near(t.y + t.h, n.y))) { const y = Math.min(n.y, t.y); t.h += n.h; t.y = y; }
+      else continue;
+      w.blocks = w.blocks.filter(x => x !== n); again = true; break;
+    }
+  }
+}
+
+/* ---------- Verbinden & Teilen ---------- */
+/** Feld mit den Nachbarn auf einer Seite verbinden – nur wenn das Ergebnis ein Rechteck ist */
+function merge(b, dir) {
+  const w = week();
+  const ax = dir === "left" || dir === "right" ? "v" : "h";
+  const fwd = dir === "right" || dir === "down";
+  const e = fwd ? E(b, ax) : S(b, ax);
+  const [s0, s1] = span(b, ax);
+  const N = w.blocks.filter(n => n !== b && near(fwd ? S(n, ax) : E(n, ax), e) && overlaps(n, ax, s0, s1));
+  const fits = N.length && N.every(n => { const [p, q] = span(n, ax); return p > s0 - EPS && q < s1 + EPS; })
+    && N.every(n => near(fwd ? E(n, ax) : S(n, ax), fwd ? E(N[0], ax) : S(N[0], ax)));
+  if (!fits) return toast("Verbinden geht hier nicht – das Nachbarfeld ist anders geschnitten. Tipp: erst die Linien angleichen oder das Nachbarfeld teilen.");
+  const full = N.filter(n => !n.empty);
+  if (full.length && !confirm(`Dabei wird ${full.map(n => "„" + n.title + "“").join(", ")} entfernt. Fortfahren?`)) return;
+  change(() => {
+    const far = fwd ? E(N[0], ax) : S(N[0], ax);
+    if (ax === "v") { if (fwd) b.w = far - b.x; else { b.w = E(b, "v") - far; b.x = far; } }
+    else { if (fwd) b.h = far - b.y; else { b.h = E(b, "h") - far; b.y = far; } }
+    w.blocks = w.blocks.filter(n => !N.includes(n));
+  });
+}
+/** Feld in zwei Hälften teilen; die neue Hälfte ist leer */
+function split(b, how) {
+  const U = usableW(), H = bodyH();
+  if (how === "v" ? b.w * U / 2 < MIN_W : b.h * H / 2 < MIN_H) return toast("Das Feld ist zu klein zum Teilen.");
+  change(() => {
+    let n;
+    if (how === "v") { b.w /= 2; n = emptyTile(b.x + b.w, b.y, b.w, b.h); }
+    else { b.h /= 2; n = emptyTile(b.x, b.y + b.h, b.w, b.h); }
+    week().blocks.push(n); sortTiles(week().blocks);
+  });
+}
+
+/** Bild verschieben / Größe ändern.
+ *  Normale Bilder rasten beim Ziehen ein: links/rechts (Text fließt daneben), oben oder unten.
+ *  Bilder im Modus „frei“ lassen sich millimetergenau über den Text legen. */
+let justDragged = false, quietSelect = false;
+function startImgDrag(e, b, i, box, mode) {
+  if (e.button !== 0) return;
+  const wasSel = selectedId === b.id && selImg === i.id;
+  selectedId = b.id; selImg = i.id;
+  if (!wasSel) { document.querySelectorAll(".imgbox.sel").forEach(x => x.classList.remove("sel")); box.classList.add("sel"); }
+  snapshot();
+  const blockEl = box.closest(".block");
+  const content = box.closest(".content");
+  const cr = content.getBoundingClientRect(), br = box.getBoundingClientRect();
+  const sx = (br.left - cr.left) / (Z * PX), sy = (br.top - cr.top) / (Z * PX), w0 = i.w;
+  // Innenfläche des Felds (ohne Rand 1 mm oben / 1,5 mm seitlich) als Bezug für frei platzierte Bilder
+  const bl = blockEl.getBoundingClientRect();
+  const inW = bl.width / (Z * PX) - 3, inH = bl.height / (Z * PX) - 2;
+  const ix0 = (br.left - bl.left) / (Z * PX) - 1.5, iy0 = (br.top - bl.top) / (Z * PX) - 1;
+  let moved = false, lastKey = "";
+  track(e, (dx, dy, ev) => {
+    if (Math.abs(dx) + Math.abs(dy) < 0.8 && !moved) return;
+    moved = true;
+    if (mode === "resize") {
+      i.w = Math.max(4, Math.round((w0 + dx) * 2) / 2);
+      blockEl.querySelectorAll(".imgbox.sel").forEach(x => x.style.width = i.w + "mm");
+      scheduleOverflowCheck();
+    } else if (i.mode === "free") {
+      i.x = Math.round((sx + dx) * 2) / 2; i.y = Math.round((sy + dy) * 2) / 2;
+      const bx = blockEl.querySelector(".imgbox.sel"); bx.style.left = i.x + "mm"; bx.style.top = i.y + "mm";
+    } else {
+      // Bild frei im ganzen Feld verschieben – der Text weicht aus:
+      //  · seitlich → Text fließt daneben   · mittig → Text springt darüber/darunter weiter
+      blockEl.classList.add("imgfree");
+      const ih = i.w * (i.ar || 0.75);
+      const px = Math.max(0, Math.min(inW - i.w, ix0 + dx)), py = Math.max(0, Math.min(inH - ih - IMG_GAP - 0.3, iy0 + dy));   // Abstand unter dem Bild zählt mit
+      const mid = px + i.w / 2;
+      const mode = Math.abs(mid - inW / 2) < inW * 0.15 ? "center" : (mid < inW / 2 ? "left" : "right");
+      const ox = Math.round((mode === "right" ? inW - px - i.w : px) * 2) / 2;
+      const oy = Math.round(py * 2) / 2;
+      const key = mode + ":" + ox + ":" + oy;
+      if (key !== lastKey) {
+        lastKey = key; i.mode = mode; i.ox = ox; i.oy = oy;
+        refreshBlock(b);
+        blockEl.querySelector(".imgbox.sel")?.classList.add("dragging");
+      }
+    }
+  }, () => {
+    quietSelect = ui.min;   // war das Fenster zu, bleibt es beim Anklicken/Verschieben eines Bilds zu
+    if (!moved) undoStack.pop();
+    else { justDragged = true; setTimeout(() => justDragged = false, 0); }
+    persist(); renderSheet(); renderRight();
+  });
+}
+
+/* ---------- Zeilen (Bänder) & Tage (Spalten) ---------- */
+const inRange = (b, ax, a0, a1) => S(b, ax) > a0 - EPS && E(b, ax) < a1 + EPS;
+/** Streifen [a0,a1] entfernen und den Rest auf die volle Fläche strecken */
+function removeStripe(w, ax, a0, a1) {
+  const d = a1 - a0, k = 1 / (1 - d);
+  w.blocks = w.blocks.filter(b => !inRange(b, ax, a0, a1));
+  w.blocks.forEach(b => {
+    if (ax === "h") { if (b.y > a0 - EPS) b.y -= d; b.y *= k; b.h *= k; }
+    else { if (b.x > a0 - EPS) b.x -= d; b.x *= k; b.w *= k; }
+  });
+}
+/** Zwei benachbarte Streifen tauschen */
+function swapStripes(w, ax, a0, m, a1) {
+  const d1 = m - a0, d2 = a1 - m;
+  w.blocks.forEach(b => {
+    if (inRange(b, ax, a0, m)) { if (ax === "h") b.y += d2; else b.x += d2; }
+    else if (inRange(b, ax, m, a1)) { if (ax === "h") b.y -= d1; else b.x -= d1; }
+  });
+  sortTiles(w.blocks);
+}
+function addRow() {
+  change(() => {
+    const w = week(), n = bands(w).length, f = n / (n + 1), cx = fracs(w.colW);
+    w.blocks.forEach(b => { b.y *= f; b.h *= f; });
+    for (let c = 0; c < w.days.length; c++) w.blocks.push(emptyTile(cx[c], f, cx[c + 1] - cx[c], 1 - f));
+  });
+}
+function delBand(k) {
+  const w = week(), B = bands(w);
+  if (B.length <= 1) return;
+  const [y0, y1] = B[k];
+  const n = w.blocks.filter(b => !b.empty && inRange(b, "h", y0, y1)).length;
+  if (n && !confirm(`Zeile mit ${n} Angebot(en) löschen?`)) return;
+  change(() => { removeStripe(w, "h", y0, y1); if (findBlock(selectedId) == null) selectedId = null; });
+}
+function moveBand(k, dir) {
+  const w = week(), B = bands(w), j = k + dir;
+  if (j < 0 || j >= B.length) return;
+  const [a, b2] = dir > 0 ? [B[k], B[j]] : [B[j], B[k]];
+  change(() => swapStripes(w, "h", a[0], a[1], b2[1]));
+}
+/** Ist x eine durchgehende senkrechte Linie? */
+const fullV = (w, x) => near(x, 0) || near(x, 1) || !w.blocks.some(b => b.x < x - EPS && b.x + b.w > x + EPS);
+function addCol() {
+  change(() => {
+    const w = week(), n = w.days.length, f = n / (n + 1);
+    w.blocks.forEach(b => { b.x *= f; b.w *= f; });
+    bands(w).forEach(([y0, y1]) => w.blocks.push(emptyTile(f, y0, 1 - f, y1 - y0)));
+    w.days.push("Neuer Tag"); w.colW = w.colW.map(v => v / w.colW.reduce((a, b) => a + b, 0) * f); w.colW.push(1 - f);
+    const d = datesFor(w.start, w.days.length); if (d) w.days[w.days.length - 1] = d[w.days.length - 1];
+    sortTiles(w.blocks);
+  });
+}
+function delCol(c) {
+  const w = week(), cx = fracs(w.colW);
+  if (w.days.length <= 1) return;
+  if (!fullV(w, cx[c]) || !fullV(w, cx[c + 1])) return toast("Ein Feld reicht über diesen Tag hinaus – bitte das Feld zuerst schmaler ziehen oder teilen.");
+  const n = w.blocks.filter(b => !b.empty && inRange(b, "v", cx[c], cx[c + 1])).length;
+  if (!confirm(`Tag „${w.days[c]}“ löschen?` + (n ? ` ${n} Angebot(e) darin werden entfernt.` : ""))) return;
+  change(() => { removeStripe(w, "v", cx[c], cx[c + 1]); w.days.splice(c, 1); w.colW.splice(c, 1); });
+}
+function moveCol(c, dir) {
+  const w = week(), cx = fracs(w.colW), t = c + dir;
+  if (t < 0 || t >= w.days.length) return;
+  const a = Math.min(c, t);
+  if (![cx[a], cx[a + 1], cx[a + 2]].every(x => fullV(w, x))) return toast("Hier liegen Felder über mehrere Tage – bitte zuerst schmaler ziehen oder teilen.");
+  change(() => { swapStripes(w, "v", cx[a], cx[a + 1], cx[a + 2]); [w.colW[a], w.colW[a + 1]] = [w.colW[a + 1], w.colW[a]]; });
+}
+
+/* ---------- Datum ---------- */
+function addDays(iso, n) {
+  if (!iso) return "";
+  const d = new Date(iso + "T12:00:00"); d.setDate(d.getDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+function datesFor(iso, count) {
+  if (!iso) return null;
+  const out = [], d = new Date(iso + "T12:00:00");
+  while (out.length < count) {
+    if (d.getDay() !== 0 && d.getDay() !== 6) out.push(`${WEEKDAYS[d.getDay()]}, ${String(d.getDate()).padStart(2, "0")}.${String(d.getMonth() + 1).padStart(2, "0")}.${d.getFullYear()}`);
+    d.setDate(d.getDate() + 1);
+  }
+  return out;
+}
+
+/* ---------- Baukasten ---------- */
+function firstFree(w) { return sortTiles([...w.blocks]).find(b => b.empty) || null; }
+function renderLib() {
+  const tab = ui.libTab || "lib";
+  document.querySelectorAll("#libTabs button").forEach(x => x.classList.toggle("on", x.dataset.t === tab));
+  const L = $("lib"); L.innerHTML = ""; L.className = tab === "img" ? "imggrid" : "";
+  const q = $("libSearch").value.trim().toLowerCase();
+  const hit = (t) => !q || [t.title, t.desc, t.note, t.contact, t.from].some(v => (v || "").toLowerCase().includes(q));
+  const hint = $("libHint");
+  $("libSearch").placeholder = tab === "img" ? "🔍 Bild suchen …" : "🔍 Suchen …";
+  if (tab === "lib") {
+    hint.innerHTML = `In eine leere Zelle <b>ziehen</b> – oder <b>Doppelklick</b>. Eigene Bausteine: Feld anklicken → 🧱.`;
+    lib.filter(hit).forEach(t => L.appendChild(libItem(t, {
+      drag: { kind: "lib", id: t.id },
+      del: () => { if (confirm(`Baustein „${t.title}“ entfernen?`)) { lib = lib.filter(x => x !== t); persist(); renderLib(); } }
+    })));
+  } else if (tab === "arch") {
+    const all = archiveItems();
+    hint.innerHTML = all.length ? `Alle Angebote aus deinen anderen Plänen. Ziehen oder Doppelklick – ⭐ legt sie in den Baukasten.`
+      : `Hier erscheinen alle Angebote aus deinen <b>anderen Plänen</b>, sobald ein Datenordner oder eine Arbeitsmappe geöffnet ist (📂 Pläne).`;
+    all.filter(hit).forEach(t => L.appendChild(libItem(t, {
+      drag: { kind: "tpl", tpl: t }, from: t.from,
+      star: () => { lib.push(Object.assign(contentOf(t), { id: uid() })); persist(); toast(`„${t.title}“ im Baukasten gespeichert`); }
+    })));
+  } else {
+    hint.innerHTML = `Bild auf ein Feld <b>ziehen</b>. Hochgeladene Bilder werden hier gemerkt.` + (store.kind === "folder" ? ` Sie liegen im Datenordner unter <b>bilder/</b>.` : "");
+    const add = mk("div", "upload", "＋ Bilder"); add.style.gridColumn = "1 / -1"; add.onclick = () => $("libImgInput").click();
+    L.appendChild(add);
+    store.images.filter(i => !q || i.name.toLowerCase().includes(q)).forEach(img => {
+      const el = mk("div", "im"); el.draggable = true; el.title = img.name + " – auf ein Feld ziehen";
+      el.style.backgroundImage = `url("${imgUrl(img)}")`;
+      el.appendChild(mk("span", "", img.name.replace(/\.[^.]+$/, "")));
+      el.ondragstart = (e) => { e.dataTransfer.setData("text/plain", "img:" + img.name); e.dataTransfer.effectAllowed = "copy"; dragInfo = { kind: "img", img }; };
+      el.ondragend = () => { dragInfo = null; };
+      el.ondblclick = () => { const b = findBlock(selectedId); if (!b || b.empty) return toast("Erst ein Feld anklicken – oder das Bild auf ein Feld ziehen."); imageData(img).then(d => addImageData(b, [d])); };
+      L.appendChild(el);
+    });
+  }
+}
+/** Ein Eintrag in Baukasten/Archiv: ziehbar, Doppelklick = ins nächste freie Feld */
+function libItem(t, o) {
+  const el = mk("div", "lib-item"); el.draggable = true;
+  el.innerHTML = `<span class="sw" style="background:${t.color}">${t.icon || ""}</span><span class="name"><b>${t.hash ? "# " : ""}${esc(t.title || "(ohne Titel)")}</b>${o.from ? `<span class="from">${esc(o.from)}</span>` : ""}</span>`;
+  if (o.del) { const x = mk("button", "", "✕"); x.title = "Aus Baukasten entfernen"; x.onclick = (e) => { e.stopPropagation(); o.del(); }; el.appendChild(x); }
+  if (o.star) { const x = mk("button", "", "⭐"); x.title = "In den Baukasten legen"; x.onclick = (e) => { e.stopPropagation(); o.star(); }; el.appendChild(x); }
+  el.ondragstart = (e) => { e.dataTransfer.setData("text/plain", "lib"); e.dataTransfer.effectAllowed = "copy"; dragInfo = o.drag; };
+  el.ondragend = () => { dragInfo = null; };
+  el.title = [t.title, o.from, "In ein leeres Feld ziehen – oder Doppelklick"].filter(Boolean).join(" · ");
+  el.ondblclick = () => {
+    const f = firstFree(week());
+    if (!f) return toast("Kein leeres Feld – füge eine Zeile hinzu oder teile ein Feld.");
+    change(() => { fillTile(f, t); selectedId = f.id; selImg = null; });
+  };
+  return el;
+}
+/** Archiv: alle Angebote aus den anderen Plänen (gleiche Angebote nur einmal) */
+function archiveItems() {
+  const seen = new Set(), out = [];
+  Object.entries(store.plans).filter(([n]) => n !== planName).sort((a, b) => (b[1].mtime || 0) - (a[1].mtime || 0)).forEach(([n, e]) => {
+    (e.plan?.weeks || []).forEach(w => w.blocks.forEach(b => {
+      if (b.empty || !b.title || b.title === NEW_TITLE) return;
+      const key = [b.title, b.desc, b.note].join("|").toLowerCase();
+      if (seen.has(key)) return; seen.add(key);
+      out.push(Object.assign(contentOf(b), { from: `${n} · ${blockDate(w, b)}` }));
+    }));
+  });
+  return out.sort((a, b) => a.title.localeCompare(b.title, "de"));
+}
+
+/* ============================================================
+   Rechte Spalte: Feld-Editor bzw. Seite & Design
+   ============================================================ */
+function renderRight() {
+  const b = findBlock(selectedId);
+  const R = $("rightBody");
+  const keepFocus = document.activeElement && R.contains(document.activeElement) ? document.activeElement.id : null;
+  if (keepFocus && /^(f|s)[A-Z]/.test(keepFocus) && !["range", "checkbox"].includes(document.activeElement.type) && document.activeElement.tagName !== "BUTTON") {
+    // während des Tippens nicht neu aufbauen (Cursor bleibt stehen)
+    if (b && R.dataset.for === b.id) { updateImgList(b); updateFontLbl(b); return; }
+    if (!b && R.dataset.for === "page") return;
+  }
+  // ohne Auswahl klappt das Fenster zur kleinen Leiste ein, bei Auswahl eines Felds klappt es auf
+  if (!b && R.dataset.for !== "page") { ui.min = true; applyWindowMode(); }
+  // Fenster öffnet sich von selbst nur bei neuen Feldern – sonst reicht die Leiste am Feld (⚙ öffnet das Fenster)
+  if (b && R.dataset.for !== b.id && !quietSelect && (focusTitle || b.title === NEW_TITLE)) { ui.min = false; applyWindowMode(); }
+  quietSelect = false;
+  R.dataset.for = b ? b.id : "page";
+  b ? renderBlockEditor(R, b) : renderPageEditor(R);
+  $("winTitle").textContent = b ? "✏️ " + (b.title || "Feld bearbeiten") : "🎨 Seite & Design";
+  placeWindow();
+}
+
+/* ---------- schwebendes Fenster ---------- */
+const saveUi = () => { try { localStorage.setItem("ferienplaner.ui", JSON.stringify(ui)); } catch (e) {} };
+function applyWindowMode() {
+  $("right").classList.toggle("float", ui.float);
+  $("right").classList.toggle("side", !ui.float);
+  $("right").classList.toggle("min", ui.float && ui.min);
+  $("app").classList.toggle("floating", ui.float);
+  if (!ui.float) { const r = $("right"); r.style.left = r.style.top = ""; }
+}
+/** Fenster platzieren: frei verschoben → dort lassen, sonst neben das ausgewählte Feld */
+function placeWindow() {
+  if (!ui.float) return;
+  const R = $("right"), W = R.offsetWidth || 320, H = Math.min(R.offsetHeight || 500, innerHeight - 90);
+  let x, y;
+  if (ui.pos) { x = ui.pos.x; y = ui.pos.y; }
+  else {
+    const el = selectedId && !ui.min && document.querySelector(`#grid .block[data-id="${selectedId}"]`);   // eingeklappt: bleibt unten rechts
+    if (el) {
+      const r = el.getBoundingClientRect();
+      x = r.right + 14 + W <= innerWidth - 8 ? r.right + 14 : (r.left - 14 - W >= 8 ? r.left - 14 - W : innerWidth - W - 12);
+      y = r.top;
+    } else { x = innerWidth - W - 16; y = innerHeight - H - 16; }   // ohne Auswahl: unten rechts
+  }
+  x = Math.max(8, Math.min(innerWidth - W - 8, x));
+  y = Math.max(66, Math.min(innerHeight - H - 8, y));   // nie unten aus dem Bildschirm ragen
+  R.style.left = x + "px"; R.style.top = y + "px";
+}
+function wireWindow() {
+  $("winbar").addEventListener("pointerdown", (e) => {
+    if (e.target.closest("button") || !ui.float) return;
+    e.preventDefault();
+    const R = $("right"), x0 = e.clientX - R.offsetLeft, y0 = e.clientY - R.offsetTop;
+    const sx = e.clientX, sy = e.clientY; let moved = false;
+    const move = (ev) => {
+      if (!moved && Math.abs(ev.clientX - sx) + Math.abs(ev.clientY - sy) < 4) return;
+      moved = true; ui.pos = { x: ev.clientX - x0, y: ev.clientY - y0 }; placeWindow();
+    };
+    const up = () => {
+      removeEventListener("pointermove", move); removeEventListener("pointerup", up);
+      if (!moved && ui.min) { ui.min = false; applyWindowMode(); placeWindow(); }   // einfacher Klick auf die eingeklappte Leiste öffnet sie
+      saveUi();
+    };
+    addEventListener("pointermove", move); addEventListener("pointerup", up);
+  });
+  $("winMin").onclick = () => { ui.min = !ui.min; saveUi(); applyWindowMode(); placeWindow(); };
+  $("winClose").onclick = () => { selectedId = null; selImg = null; renderSheet(); renderRight(); ui.min = true; saveUi(); applyWindowMode(); placeWindow(); };
+  $("winAuto").onclick = () => { ui.pos = null; saveUi(); placeWindow(); toast("Fenster öffnet sich jetzt wieder neben dem Feld"); };
+  $("winDock").onclick = () => { ui.float = false; saveUi(); applyWindowMode(); renderSheet(); };
+  $("winFloat").onclick = () => { ui.float = true; ui.min = false; saveUi(); applyWindowMode(); renderSheet(); placeWindow(); };
+  addEventListener("resize", () => placeWindow());
+  applyWindowMode();
+}
+
+function renderBlockEditor(R, b) {
+  const pal = (THEMES[plan.theme] || THEMES.klassisch).palette;
+  R.innerHTML =
+    sec("text", "📝 Text", "", `
+      <label>Titel</label><input type="text" id="fTitle">
+      <label class="check"><input type="checkbox" id="fHash"> # Interessenliste (Eintragen nötig)</label>
+      <label>Uhrzeit / Zusatz</label><input type="text" id="fTime" placeholder="z. B. 9:00 – 12:00 Uhr">
+      <label>Beschreibung</label><textarea id="fDesc" rows="3"></textarea>
+      <label>Wichtiger Hinweis (fett)</label><textarea id="fNote" rows="2" placeholder="z. B. Bitte bringt Sportsachen mit!"></textarea>
+      <label>Ansprechpartner</label><input type="text" id="fContact" placeholder="z. B. Fr. Schilling & Herr Daiker">`, true) +
+    (b.hash ? sec("list", "📋 Interessenliste", `<span class="sumval">${listOf(b).seats ? listOf(b).seats + " Plätze" : ""}</span>`, `
+      ${b.contact ? "" : `<p class="hint" style="margin:0 0 6px;color:var(--danger)">⚠ Bitte einen Ansprechpartner eintragen – er steht immer auf der Liste.</p>`}
+      <label style="margin-top:2px">Treffpunkt</label><input type="text" id="fLPlace" placeholder="z. B. Eingang Hort, 8:15 Uhr">
+      <div class="row2">
+        <div><label>Plätze</label><input type="number" id="fLSeats" min="1" max="40" placeholder="so viele wie passen"></div>
+        <div><label>Eintragen bis</label><input type="text" id="fLUntil" placeholder="z. B. Fr, 23.10."></div>
+      </div>
+      <label class="check"><input type="checkbox" id="fLWait"> Warteliste anhängen</label>
+      <label>Bitte mitbringen</label><input type="text" id="fLBring" placeholder="z. B. Rucksack mit Trinken & Vesper">
+      <label>Eigener Text (leer = Vorlage)</label><textarea id="fLText" rows="3"></textarea>
+      <div class="btnrow"><button class="small" id="fLShow">👁 Liste ansehen</button></div>`) : "") +
+    sec("icon", "😀 Symbol", `<span class="sumval">${b.icon || "–"}</span>`, `<div class="emojis" id="fIcons"></div>`) +
+    sec("style", "🎨 Farbe & Schrift", `<span class="sumval"><i class="dot" style="background:${b.color}"></i>${fsOf(b)} pt</span>`, `
+      <label style="margin-top:2px">Hintergrundfarbe</label><div class="swatches" id="fColors"></div>
+      <label>Schriftgröße</label>
+      <div class="stepper"><button class="small" id="fFsMinus">A−</button><b id="fFsLbl"></b><button class="small" id="fFsPlus">A+</button><button class="small ghost" id="fFsReset">Standard</button></div>`) +
+    sec("imgs", "🖼️ Bilder", `<span class="sumval">${b.imgs.length || "–"}</span>`, `
+      <div class="imglist" id="fImgs"></div>
+      <div class="upload" id="fUpload">＋ Bild hinzufügen</div>
+      <p class="hint" style="margin:6px 0 0">Bild im Feld einfach <b>hinziehen</b> – der Text passt sich an: seitlich fließt er drumherum, in der Mitte rutscht er darunter/darüber. Blaue Ecke = Größe, ✕ = löschen.</p>`) +
+    sec("size", "📐 Größe & Aufteilung", `<span class="sumval">${Math.round(b.w * usableW())} × ${Math.round(b.h * bodyH())} mm</span>`, `
+      <p class="hint" style="margin:0 0 8px">Größe ändern: einfach die <b>Linie</b> am Rand des Felds ziehen – nur die direkt angrenzenden Felder passen sich an.</p>
+      <label style="margin-top:0">Mit Nachbarfeld verbinden</label>
+      <div class="btnrow" style="margin-top:0"><button class="small" id="fMl">← links</button><button class="small" id="fMr">rechts →</button><button class="small" id="fMu">↑ oben</button><button class="small" id="fMd">unten ↓</button></div>
+      <label>Feld teilen</label>
+      <div class="btnrow" style="margin-top:0"><button class="small" id="fSv">◫ nebeneinander</button><button class="small" id="fSh">⬒ untereinander</button></div>`) + `
+    <div class="actions">
+      <button class="small" id="fDup" title="Feld kopieren">⧉ Kopie</button>
+      <button class="small" id="fToLib" title="Als Baustein in den Baukasten legen">🧱 Merken</button>
+      <button class="small danger" id="fDel" title="Feld löschen (Entf)">🗑 Löschen</button>
+    </div>`;
+  wireSecs(R);
+  const fields = { fTitle: "title", fTime: "time", fDesc: "desc", fNote: "note", fContact: "contact" };
+  for (const [id, k] of Object.entries(fields)) {
+    const el = $(id); el.value = b[k] || "";
+    el.addEventListener("focus", snapshot);
+    el.addEventListener("input", () => { b[k] = el.value; persist(); renderSheet(); });
+  }
+  // Platzhalter-Titel beim Hineinklicken komplett markieren → einfach lostippen
+  $("fTitle").addEventListener("focus", () => { if ($("fTitle").value === NEW_TITLE) setTimeout(() => $("fTitle").select(), 0); });
+  if (focusTitle) { focusTitle = false; setTimeout(() => { $("fTitle").focus(); $("fTitle").select(); }, 0); }
+  $("fHash").checked = !!b.hash;
+  if (b.hash) {
+    const L = listOf(b);
+    const lf = { fLPlace: "place", fLSeats: "seats", fLUntil: "until", fLBring: "bring", fLText: "text" };
+    for (const [id, k] of Object.entries(lf)) {
+      const el = $(id); el.value = L[k] ?? "";
+      el.addEventListener("focus", snapshot);
+      el.addEventListener("input", () => { b.list = Object.assign(listOf(b), { [k]: el.value }); persist(); });
+    }
+    $("fLText").placeholder = plan.lists.text;
+    $("fLWait").checked = L.wait;
+    $("fLWait").onchange = () => change(() => b.list = Object.assign(listOf(b), { wait: $("fLWait").checked }));
+    $("fLShow").onclick = () => showLists([{ w: week(), b }], "📋 " + (b.title || "Interessenliste"));
+  }
+  $("fHash").onchange = () => change(() => b.hash = $("fHash").checked);
+
+  const ic = $("fIcons");
+  EMOJIS.forEach(em => {
+    const btn = mk("button", em === (b.icon || "") ? "on" : "", em || "∅"); btn.title = em ? "Symbol " + em : "kein Symbol";
+    btn.onclick = () => change(() => b.icon = em);
+    ic.appendChild(btn);
+  });
+
+  updateFontLbl(b);
+  $("fFsMinus").onclick = () => change(() => b.fs = Math.max(5, fsOf(b) - 0.5));
+  $("fFsPlus").onclick = () => change(() => b.fs = Math.min(20, fsOf(b) + 0.5));
+  $("fFsReset").onclick = () => change(() => b.fs = null);
+
+  const sw = $("fColors");
+  pal.forEach(c => {
+    const s = mk("span"); s.style.background = c; s.title = c;
+    if (c.toLowerCase() === (b.color || "").toLowerCase()) s.className = "on";
+    s.onclick = () => change(() => b.color = c);
+    sw.appendChild(s);
+  });
+  const custom = mk("input"); custom.type = "color"; custom.value = b.color; custom.title = "Eigene Farbe";
+  custom.style.cssText = "width:27px;height:27px;padding:0;border:none;background:none;cursor:pointer";
+  custom.onchange = () => change(() => b.color = custom.value.toUpperCase());
+  sw.appendChild(custom);
+
+  updateImgList(b);
+  $("fUpload").onclick = () => $("imgInput").click();
+
+  $("fMl").onclick = () => merge(b, "left"); $("fMr").onclick = () => merge(b, "right");
+  $("fMu").onclick = () => merge(b, "up"); $("fMd").onclick = () => merge(b, "down");
+  $("fSv").onclick = () => split(b, "v"); $("fSh").onclick = () => split(b, "h");
+  $("fDel").onclick = deleteSelected;
+  $("fDup").onclick = () => duplicate(b);
+  $("fToLib").onclick = () => remember(b);
+}
+/** Einklappbarer Bereich; offen/zu wird gemerkt */
+function sec(key, title, sum, body, defOpen) {
+  const open = ui.open[key] ?? !!defOpen;
+  return `<details class="sec" data-key="${key}" ${open ? "open" : ""}><summary><span>${title}</span>${sum}</summary><div class="secbody">${body}</div></details>`;
+}
+function wireSecs(R) {
+  R.querySelectorAll("details.sec").forEach(d => d.addEventListener("toggle", () => { ui.open[d.dataset.key] = d.open; saveUi(); placeWindow(); }));
+}
+function updateFontLbl(b) { const l = $("fFsLbl"); if (l) l.textContent = fsOf(b) + " pt" + (b.fs ? "" : " (Std.)"); }
+
+function updateImgList(b) {
+  const L = $("fImgs"); if (!L) return;
+  L.innerHTML = b.imgs.length ? "" : `<p class="hint" style="margin:0 0 8px">Noch keine Bilder in diesem Feld.</p>`;
+  b.imgs.forEach(i => {
+    const it = mk("div", "it" + (selImg === i.id ? " sel" : ""));
+    const th = mk("img"); th.src = i.src;
+    const ctl = mk("div", "ctl");
+    const range = mk("input"); range.type = "range"; range.min = 4; range.max = 150; range.step = 0.5; range.value = i.w; range.title = "Größe";
+    range.onpointerdown = snapshot;
+    range.oninput = () => { i.w = +range.value; persist(); renderSheet(); };
+    const mode = mk("select"); mode.title = "Wo steht das Bild?";
+    mode.style.cssText = "width:auto;padding:2px 4px;font-size:12px";
+    [["left", "⬅ links, Text daneben"], ["right", "➡ rechts, Text daneben"], ["center", "↔ mittig, Text darüber/darunter"], ["top", "⬆ über dem Text"], ["bottom", "⬇ unter dem Text"], ["free", "📌 frei über den Text legen"]]
+      .forEach(([v, t]) => { const o = mk("option", "", t); o.value = v; if (i.mode === v) o.selected = true; mode.appendChild(o); });
+    mode.onclick = (e) => e.stopPropagation();
+    mode.onchange = () => change(() => { i.mode = mode.value; if (i.mode === "free") { i.x = i.x || 0; i.y = i.y || 0; } });
+    const beh = mkBtn(i.behind ? "⬇ hinter Text" : "⬆ vor Text", "Bild vor oder hinter dem Text", () => change(() => i.behind = !i.behind));
+    beh.disabled = i.mode !== "free";
+    const del = mkBtn("🗑", "Bild löschen", () => change(() => { b.imgs = b.imgs.filter(o => o !== i); if (selImg === i.id) selImg = null; }), "danger");
+    ctl.append(range, mode, beh, del);
+    it.append(th, ctl);
+    it.onclick = () => { selImg = i.id; renderSheet(); updateImgList(b); };
+    L.appendChild(it);
+  });
+}
+
+function renderPageEditor(R) {
+  R.innerHTML =
+    `<p class="hint" style="margin:0 0 6px">Klicke ein Feld in der Tabelle an, um es zu bearbeiten.</p>` +
+    sec("theme", "🎨 Thema", `<span class="sumval">${(THEMES[plan.theme] || {}).icon || ""}</span>`, `<div class="themes" id="sThemes"></div>`, true) +
+    sec("ptitle", "🔤 Überschrift & Hinweise", "", `
+      <label style="margin-top:2px">Titel</label><input type="text" id="sTitle">
+      <div class="row2">
+        <div><label>Deko-Symbol</label><input type="text" id="sDeco" placeholder="z. B. 🍂"></div>
+        <div><label>Titelgröße (pt)</label><input type="number" id="sTitleSize" min="10" max="40"></div>
+      </div>
+      <label>Gruppe / Untertitel (rechts)</label><input type="text" id="sSubtitle">
+      <label>Hinweise unten (**fett** möglich)</label><textarea id="sFooter" rows="4"></textarea>`) +
+    sec("pdate", "📅 Datum der Woche", "", `
+      <label style="margin-top:2px">Woche beginnt am</label><input type="date" id="sStart">
+      <div class="btnrow" style="margin-top:8px"><button class="small" id="sFillDates">Tage + Datum eintragen</button></div>`) +
+    sec("ppage", "📄 Seite & Schrift", "", `
+      <div class="row2">
+        <div><label style="margin-top:2px">Grundschrift (pt)</label><input type="number" id="sFont" min="6" max="14" step="0.5"></div>
+        <div><label style="margin-top:2px">Seitenrand (mm)</label><input type="number" id="sMargin" min="5" max="25"></div>
+      </div>
+      <label>Höhe Tageszeile (mm)</label><input type="number" id="sHeadH" min="5" max="20">`) +
+    sec("plists", "📋 Interessenlisten", "", `
+      <label style="margin-top:2px">Text-Vorlage (**fett** möglich)</label><textarea id="sLText" rows="5"></textarea>
+      <p class="hint" style="margin:4px 0 0">Platzhalter: {Titel} {Datum} {Uhrzeit} {Ansprechpartner} {Treffpunkt} {Plätze} {Gruppe}</p>
+      <label>Spalten</label>
+      <label class="check" style="margin-top:2px"><input type="checkbox" id="sLKlasse"> Klasse</label>
+      <label class="check"><input type="checkbox" id="sLGruppe"> Gruppe</label>
+      <label class="check"><input type="checkbox" id="sLStaff"> ✓ dabei (zum Abhaken fürs Personal)</label>
+      <label>Zeilen Warteliste</label><input type="number" id="sLWait" min="0" max="10">
+      <label class="check"><input type="checkbox" id="sLAttach"> beim Word-Export an den Plan anhängen</label>
+      <div class="btnrow"><button class="small" id="sLShow">👁 Alle Listen ansehen</button><button class="small ghost" id="sLReset">Text zurücksetzen</button></div>`) +
+    sec("pcolors", "🖌️ Farben einzeln", "", `
+      <div class="row2">
+        <div><label style="margin-top:2px">Tageszeile</label><input type="color" id="sHead"></div>
+        <div><label style="margin-top:2px">Titel</label><input type="color" id="sTitleC"></div>
+        <div><label>Akzent / Linie</label><input type="color" id="sAccent"></div>
+        <div><label>Hinweis-Kasten</label><input type="color" id="sNote"></div>
+        <div><label>Tabellenlinien</label><input type="color" id="sLine"></div>
+      </div>`);
+  wireSecs(R);
+  const T = $("sThemes");
+  Object.entries(THEMES).forEach(([k, t]) => {
+    const el = mk("div", "theme" + (plan.theme === k ? " on" : ""));
+    el.innerHTML = `<span style="font-size:18px">${t.icon}</span><span style="flex:1">${t.name}</span><span class="dots"><i style="background:${t.head}"></i><i style="background:${t.accent}"></i><i style="background:${t.note}"></i></span>`;
+    el.onclick = () => change(() => {
+      const oldDeco = (THEMES[plan.theme] || {}).deco;
+      plan.theme = k; Object.assign(plan, pickTheme(k));
+      if (!plan.deco || plan.deco === oldDeco) plan.deco = t.deco;
+    });
+    T.appendChild(el);
+  });
+  const bind = (id, key, conv) => {
+    const el = $(id); el.value = plan[key] ?? "";
+    el.addEventListener("focus", snapshot);
+    el.addEventListener(el.type === "color" ? "change" : "input", () => { plan[key] = conv ? conv(el.value) : el.value; persist(); renderSheet(); });
+  };
+  const num = (min, max, def) => v => Math.min(max, Math.max(min, +v || def));
+  bind("sTitle", "title"); bind("sDeco", "deco"); bind("sSubtitle", "subtitle"); bind("sFooter", "footer");
+  bind("sTitleSize", "titleSize", num(10, 40, 20)); bind("sFont", "fontSize", num(6, 14, 9));
+  bind("sMargin", "margin", num(5, 25, 10)); bind("sHeadH", "headH", num(5, 20, 8));
+  bind("sHead", "headColor"); bind("sTitleC", "titleColor"); bind("sAccent", "accentColor"); bind("sNote", "noteColor"); bind("sLine", "lineColor");
+  const LS = plan.lists;
+  $("sLText").value = LS.text;
+  $("sLText").addEventListener("focus", snapshot);
+  $("sLText").addEventListener("input", () => { LS.text = $("sLText").value; persist(); });
+  for (const [id, k] of [["sLKlasse", "klasse"], ["sLGruppe", "gruppe"], ["sLStaff", "staff"], ["sLAttach", "attach"]]) {
+    $(id).checked = !!LS[k]; $(id).onchange = () => change(() => LS[k] = $(id).checked);
+  }
+  $("sLWait").value = LS.wait;
+  $("sLWait").addEventListener("focus", snapshot);
+  $("sLWait").addEventListener("input", () => { LS.wait = Math.max(0, Math.min(10, +$("sLWait").value || 0)); persist(); });
+  $("sLShow").onclick = () => showLists(listItems());
+  $("sLReset").onclick = () => change(() => LS.text = LIST_TEXT);
+  $("sStart").value = week().start || "";
+  $("sStart").onchange = () => change(() => week().start = $("sStart").value);
+  $("sFillDates").onclick = () => {
+    const w = week(), d = datesFor($("sStart").value, w.days.length);
+    if (!d) return toast("Bitte zuerst ein Startdatum wählen.");
+    change(() => { w.start = $("sStart").value; w.days = d; });
+  };
+}
+
+function deleteSelected() {
+  const b = findBlock(selectedId); if (!b) return;
+  if (selImg && b.imgs.some(i => i.id === selImg)) return change(() => { b.imgs = b.imgs.filter(i => i.id !== selImg); selImg = null; });
+  change(() => { clearTile(b); selectedId = null; });   // Platz bleibt als leeres Feld
+}
+
+/* ---------- Bilder laden ---------- */
+async function addImages(b, files) {
+  files = files.filter(f => f.type.startsWith("image/"));
+  if (!files.length) return;
+  const imgs = [];
+  for (const f of files) {
+    try { const d = await shrinkImage(f, 900); imgs.push(d); rememberImage(f.name, d.src); } catch (e) { toast("Bild konnte nicht gelesen werden: " + f.name); }
+  }
+  addImageData(b, imgs);
+}
+function addImageData(b, imgs) {
+  change(() => imgs.forEach(({ src, ar }) => {
+    const i = { id: uid(), src, ar, mode: "left", ox: 0, oy: 0, w: 18, x: 0, y: 0, behind: false };
+    b.imgs.push(i); selImg = i.id;
+  }));
+}
+function shrinkImage(file, max) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const s = Math.min(1, max / Math.max(img.width, img.height));
+        const cv = document.createElement("canvas"); cv.width = Math.round(img.width * s); cv.height = Math.round(img.height * s);
+        const ctx = cv.getContext("2d");
+        const jpeg = /jpe?g/i.test(file.type);
+        if (jpeg) { ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, cv.width, cv.height); }
+        ctx.drawImage(img, 0, 0, cv.width, cv.height);
+        // PNG behält Transparenz (z. B. Cliparts), Fotos werden JPEG
+        res({ src: jpeg ? cv.toDataURL("image/jpeg", 0.85) : cv.toDataURL("image/png"), ar: cv.height / cv.width });
+      };
+      img.onerror = rej; img.src = r.result;
+    };
+    r.onerror = rej; r.readAsDataURL(file);
+  });
+}
+
+/* ============================================================
+   Word-Export (.docx)
+   ============================================================ */
+// ein Emoji = Bildzeichen (+ optional Variation-Selector / Hautton / ZWJ-Verbindungen)
+const EMOJI_SRC = "(?:\\p{Extended_Pictographic}|\\p{Regional_Indicator})(?:\\uFE0F|\\p{Emoji_Modifier}|\\u200D(?:\\p{Extended_Pictographic})\\uFE0F?)*";
+const EMOJI_RE = new RegExp("(" + EMOJI_SRC + ")", "u");
+const EMOJI_RE_ONE = new RegExp("^" + EMOJI_SRC + "$", "u");
+const emojiCache = {};
+/** Emoji mit der Emoji-Schrift des Browsers in ein PNG zeichnen */
+function emojiPng(e) {
+  if (emojiCache[e]) return emojiCache[e];
+  const S = 96, cv = document.createElement("canvas"); cv.width = cv.height = S;
+  const ctx = cv.getContext("2d");
+  ctx.font = `${S * 0.82}px "Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji","Twemoji Mozilla",sans-serif`;
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillText(e, S / 2, S * 0.54);
+  return (emojiCache[e] = dataUrlToBytes(cv.toDataURL("image/png")));
+}
+function dataUrlToBytes(u) {
+  const bin = atob(u.split(",")[1]), out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+function imgAr(i) {
+  if (i.ar) return Promise.resolve(i.ar);
+  return new Promise(res => { const im = new Image(); im.onload = () => res(im.height / im.width); im.onerror = () => res(0.75); im.src = i.src; });
+}
+
+/** Gemeinsame Helfer für alle Word-Exporte (Plan und Interessenlisten) */
+function wordKit() {
+  const D = window.docx;
+  const font = "Arial";
+  const hex = (c) => (c || "#FFFFFF").replace("#", "").toUpperCase();
+  const tw = (mm) => Math.round(mm * TW);
+  const half = (pt) => Math.round(pt * 2);
+
+  /** Text → Word-Runs; Emojis werden als kleine Bilder eingefügt (Arial hat keine Emojis → sonst nur Kästchen) */
+  const em = (text, o) => {
+    const out = [];
+    String(text).split(EMOJI_RE).forEach(piece => {
+      if (!piece) return;
+      if (EMOJI_RE_ONE.test(piece)) {
+        const px = Math.round((o.size || half(plan.fontSize)) / 2 * 1.333 * 1.08);
+        out.push(new D.ImageRun({ type: "png", data: emojiPng(piece), transformation: { width: px, height: px } }));
+      } else out.push(new D.TextRun(Object.assign({ font }, o, { text: piece })));
+    });
+    if (!out.length) out.push(new D.TextRun(Object.assign({ font }, o, { text: "" })));
+    return out;
+  };
+  const runs = (text, base) => {
+    const out = [];
+    String(text).split("\n").forEach((ln, li) => {
+      if (li > 0) out.push(new D.TextRun({ text: "", break: 1 }));
+      const parts = ln.split(/(\*\*.+?\*\*)/g).filter(Boolean);
+      parts.forEach(part => {
+        const bold = /^\*\*.+\*\*$/.test(part);
+        out.push(...em(bold ? part.slice(2, -2) : part, Object.assign({}, base, bold ? { bold: true } : {})));
+      });
+    });
+    return out;
+  };
+  return { D, font, hex, tw, half, em, runs };
+}
+
+async function exportWord() {
+  if (!window.docx) return toast("Word-Bibliothek nicht geladen (Datei lib/docx.js fehlt?).");
+  const K = wordKit(), { D, font, hex, tw, half, em, runs } = K;
+  const line = { style: D.BorderStyle.SINGLE, size: 4, color: hex(plan.lineColor) };
+  const borders = { top: line, bottom: line, left: line, right: line };
+  const SP = { before: 0, after: 60, line: 240 };   // 3 pt Abstand, einfacher Zeilenabstand
+  const P = (children, opts) => new D.Paragraph(Object.assign({ alignment: D.AlignmentType.CENTER, spacing: SP, children }, opts));
+
+  // Layout für jede Woche berechnen: gleiche Seitenaufteilung wie im Editor
+  const availH = layout.availH;
+  const uw = usableW();
+  const children = [];
+
+  for (let wi = 0; wi < plan.weeks.length; wi++) {
+    const w = plan.weeks[wi];
+    // Word-Raster = alle Feldkanten (plus Tagesgrenzen der Kopfzeile)
+    const bh = Math.max(10, availH - plan.headH), hx = fracs(w.colW);
+    const uniq = (vals) => vals.sort((a, b) => a - b).filter((v, i, a) => i === 0 || v - a[i - 1] > 1e-3);
+    const xs = uniq([0, 1, ...hx, ...w.blocks.flatMap(b => [b.x, b.x + b.w])]);
+    const ys = uniq([0, 1, ...w.blocks.flatMap(b => [b.y, b.y + b.h])]);
+    const ix = (v) => xs.reduce((bi, x, i) => Math.abs(x - v) < Math.abs(xs[bi] - v) ? i : bi, 0);
+    const iy = (v) => ys.reduce((bi, y, i) => Math.abs(y - v) < Math.abs(ys[bi] - v) ? i : bi, 0);
+    const colTw = xs.slice(1).map((x, i) => tw((x - xs[i]) * uw));
+    colTw[colTw.length - 1] += tw(uw) - colTw.reduce((a, b) => a + b, 0);
+    const sumTw = (c0, c1) => colTw.slice(c0, c1).reduce((a, b) => a + b, 0);
+
+    // Titelzeile
+    children.push(new D.Paragraph({
+      pageBreakBefore: wi > 0,
+      tabStops: [{ type: D.TabStopType.RIGHT, position: tw(uw) }],
+      spacing: { before: 0, after: tw(2), line: 240 },
+      border: { bottom: { style: D.BorderStyle.SINGLE, size: 12, color: hex(plan.accentColor), space: 3 } },
+      children: [
+        ...em(titleText(), { bold: true, size: half(plan.titleSize), color: hex(plan.titleColor) }),
+        ...em("\t" + plan.subtitle, { bold: true, size: half(Math.round(plan.titleSize * 0.65)), color: hex(plan.titleColor) }),
+      ]
+    }));
+
+    const rows = [];
+    rows.push(new D.TableRow({
+      tableHeader: true, cantSplit: true,
+      height: { value: tw(plan.headH), rule: D.HeightRule.EXACT },
+      children: w.days.map((d, c) => new D.TableCell({
+        columnSpan: ix(hx[c + 1]) - ix(hx[c]) > 1 ? ix(hx[c + 1]) - ix(hx[c]) : undefined,
+        width: { size: sumTw(ix(hx[c]), ix(hx[c + 1])), type: D.WidthType.DXA }, borders,
+        shading: { type: D.ShadingType.CLEAR, color: "auto", fill: hex(plan.headColor) },
+        verticalAlign: D.VerticalAlign.CENTER,
+        children: [P(em(d, { bold: true, size: half(plan.fontSize + 1) }), { spacing: { before: 0, after: 0, line: 240 } })]
+      }))
+    }));
+
+    // jedes Feld belegt einen Block im Word-Raster (columnSpan/rowSpan)
+    const own = {};
+    const cells = w.blocks.map(b => ({ b, c0: ix(b.x), c1: ix(b.x + b.w), r0: iy(b.y), r1: iy(b.y + b.h) }));
+    cells.forEach(t => { for (let r = t.r0; r < t.r1; r++) for (let c = t.c0; c < t.c1; c++) own[r + ":" + c] = t; });
+    for (let r = 0; r < ys.length - 1; r++) {
+      const row = [];
+      for (let c = 0; c < xs.length - 1;) {
+        const t = own[r + ":" + c];
+        if (!t) { row.push(new D.TableCell({ width: { size: colTw[c], type: D.WidthType.DXA }, borders, children: [P([])] })); c++; continue; }
+        if (t.r0 === r && t.c0 === c) {
+          const cs = t.c1 - t.c0, rs = t.r1 - t.r0;
+          row.push(t.b.empty
+            ? new D.TableCell({ columnSpan: cs > 1 ? cs : undefined, rowSpan: rs > 1 ? rs : undefined, width: { size: sumTw(t.c0, t.c1), type: D.WidthType.DXA }, borders, children: [P([])] })
+            : await blockCell(D, t.b, sumTw(t.c0, t.c1), cs, rs));
+        }
+        // weiter hinter dem Feld; Folgezeilen eines hohen Felds ergänzt docx automatisch (vMerge)
+        c = t.c1;
+      }
+      rows.push(new D.TableRow({ cantSplit: true, height: { value: tw((ys[r + 1] - ys[r]) * bh), rule: D.HeightRule.EXACT }, children: row }));
+    }
+    children.push(new D.Table({
+      width: { size: tw(uw), type: D.WidthType.DXA }, columnWidths: colTw, layout: D.TableLayoutType.FIXED,
+      margins: { top: tw(1), bottom: tw(1), left: tw(1.5), right: tw(1.5) },
+      rows
+    }));
+
+    // Hinweise unter der Tabelle
+    const lines = plan.footer.trim() ? plan.footer.split("\n") : [""];
+    lines.forEach((l, li) => children.push(new D.Paragraph({
+      spacing: { before: li === 0 ? tw(2) : 0, after: 0, line: 240 },
+      shading: plan.footer.trim() ? { type: D.ShadingType.CLEAR, color: "auto", fill: hex(plan.noteColor) } : undefined,
+      border: plan.footer.trim() ? { left: { style: D.BorderStyle.SINGLE, size: 24, color: hex(plan.accentColor), space: 4 } } : undefined,
+      indent: { left: tw(2) },
+      children: runs(l, { size: half(plan.fontSize) })
+    })));
+  }
+
+  async function blockCell(D, b, widthTw, cs, rs) {
+    const fs = fsOf(b);
+    const rowImgs = { top: [], bottom: [] }, free = [], floats = [];
+    let z = 10;
+    for (const i of b.imgs) {
+      const ar = await imgAr(i);
+      const wPx = Math.round(i.w * PX), hPx = Math.round(i.w * ar * PX);
+      const type = /^data:image\/png/.test(i.src) ? "png" : "jpg";
+      const base = { type, data: dataUrlToBytes(i.src), transformation: { width: wPx, height: hPx } };
+      if (i.mode === "free") {
+        free.push(new D.ImageRun(Object.assign(base, { floating: {
+          horizontalPosition: { relative: D.HorizontalPositionRelativeFrom.COLUMN, offset: Math.round(i.x * EMU) },
+          verticalPosition: { relative: D.VerticalPositionRelativeFrom.PARAGRAPH, offset: Math.round(i.y * EMU) },
+          allowOverlap: true, layoutInCell: true, behindDocument: !!i.behind, zIndex: z++,
+          wrap: { type: D.TextWrappingType.NONE }
+        } })));
+      } else if (isFloatImg(i)) {
+        // frei im Feld platziert; Text fließt daneben (links/rechts) bzw. springt darüber/darunter (mittig)
+        const colMM = widthTw / TW - 3;   // Zellbreite minus Innenabstand (2 × 1,5 mm)
+        const xMM = i.mode === "right" ? colMM - i.w - (i.ox || 0) : (i.ox || 0);
+        const G = IMG_GAP * EMU;
+        floats.push({ run: new D.ImageRun(Object.assign(base, { floating: {
+          horizontalPosition: { relative: D.HorizontalPositionRelativeFrom.COLUMN, offset: Math.round(Math.max(0, xMM) * EMU) },
+          verticalPosition: { relative: D.VerticalPositionRelativeFrom.PARAGRAPH, offset: Math.round((i.oy || 0) * EMU) },
+          allowOverlap: false, layoutInCell: true, zIndex: z++,
+          wrap: i.mode === "center" ? { type: D.TextWrappingType.TOP_AND_BOTTOM } : { type: D.TextWrappingType.SQUARE, side: D.TextWrappingSide.BOTH_SIDES },
+          margins: i.mode === "left" ? { left: 0, right: G, top: 0, bottom: G } : i.mode === "right" ? { left: G, right: 0, top: 0, bottom: G } : { left: 0, right: 0, top: 0, bottom: G }
+        } })) });
+      } else {
+        rowImgs[i.mode === "bottom" ? "bottom" : "top"].push(base);
+      }
+    }
+    const imgRow = (list) => {
+      const kids = [];
+      list.forEach((base, k) => { if (k) kids.push(new D.TextRun({ text: "  ", font })); kids.push(new D.ImageRun(base)); });
+      return kids;
+    };
+    // Textabsätze (Reihenfolge wie im Editor)
+    const text = [em([b.icon, b.hash ? "#" : "", b.title || ""].filter(Boolean).join(" "), { bold: true, size: half(fs + 2) })];
+    if (b.time) text.push(em(b.time, { bold: true, size: half(fs) }));
+    if (b.desc) text.push(runs(b.desc, { size: half(fs) }));
+    if (b.note) text.push(runs(b.note, { size: half(fs), bold: true }));
+    if (b.contact) text.push(em("Ansprechpartner: " + b.contact, { size: half(fs - 1), italics: true }));
+    const specs = [];
+    if (rowImgs.top.length) specs.push(imgRow(rowImgs.top));
+    specs.push(...text);
+    if (rowImgs.bottom.length) specs.push(imgRow(rowImgs.bottom));
+    // frei positionierte Bilder hängen am ersten Absatz (im Editor: oben links am Inhalt)
+    specs[0] = [...free, ...floats.map(f => f.run), ...specs[0]];   // alle schwebenden Bilder hängen am ersten Absatz (wie im Editor)
+    const out = specs.map(kids => P(kids));
+    return new D.TableCell({
+      columnSpan: cs > 1 ? cs : undefined, rowSpan: rs > 1 ? rs : undefined,
+      width: { size: widthTw, type: D.WidthType.DXA }, borders,
+      shading: { type: D.ShadingType.CLEAR, color: "auto", fill: hex(b.color) },
+      verticalAlign: b.imgs.some(isFloatImg) ? D.VerticalAlign.TOP : D.VerticalAlign.CENTER,   // wie im Editor
+      children: out
+    });
+  }
+
+  const doc = new D.Document({
+    creator: "Ferienprogramm-Planer", title: plan.title,
+    styles: { default: { document: { run: { font, size: half(plan.fontSize) }, paragraph: { spacing: { before: 0, after: 0, line: 240 } } } } },
+    sections: [{
+      properties: { page: {
+        size: { orientation: D.PageOrientation.LANDSCAPE, width: tw(PAGE_H), height: tw(PAGE_W) },
+        margin: { top: tw(plan.margin), right: tw(plan.margin), bottom: tw(plan.margin), left: tw(plan.margin), header: tw(plan.margin / 2), footer: tw(plan.margin / 2) }
+      } },
+      children
+    }, ...(plan.lists.attach ? listSections(K, buildListPages(listItems())) : [])]
+  });
+  const blob = await D.Packer.toBlob(doc);
+  download(blob, safeName(plan.title || "Ferienprogramm") + ".docx");
+  toast("✔ Word-Datei erstellt");
+}
+
+/* ============================================================
+   Interessenlisten (A4 hoch, eine Seite pro Angebot mit #)
+   ============================================================ */
+const LIST_DEF = { place: "", seats: "", wait: true, until: "", bring: "", text: "" };
+const listOf = (b) => Object.assign({}, LIST_DEF, b.list || {});
+const LP = { W: 210, H: 297, top: 10, side: 14, bottom: 14, foot: 6 };   // Seite in mm
+const LIST_ROW = 12, LIST_ROW_MIN = 8, LIST_ROW_MAX = 16;                 // Zeilenhöhe zum Eintragen (mm)
+
+/** Tage, über die ein Feld reicht → „Dienstag, 27.10.2026“ oder „Montag, 26.10. – Mittwoch, 28.10.2026“ */
+function blockDate(w, b) {
+  const cx = fracs(w.colW), idx = [];
+  w.days.forEach((d, c) => { if (Math.min(cx[c + 1], b.x + b.w) - Math.max(cx[c], b.x) > EPS) idx.push(c); });
+  if (!idx.length) return "";
+  const first = w.days[idx[0]], last = w.days[idx[idx.length - 1]];
+  return idx.length === 1 ? first : first.replace(/(\d{1,2}\.\d{1,2}\.)\d{4}/, "$1") + " – " + last;
+}
+/** Alle Angebote mit #, über alle Wochen, zeitlich sortiert */
+function listItems() {
+  const out = [];
+  plan.weeks.forEach(w => [...w.blocks].filter(b => !b.empty && b.hash).sort((a, c) => a.x - c.x || a.y - c.y).forEach(b => out.push({ w, b })));
+  return out;
+}
+function listCols() {
+  const L = plan.lists;
+  return [{ k: "nr", t: "Nr.", w: 12 }, { k: "name", t: "Name" },
+    L.klasse && { k: "klasse", t: "Klasse", w: 28 }, L.gruppe && { k: "gruppe", t: "Gruppe", w: 28 },
+    L.staff && { k: "staff", t: "✓ dabei\n(Personal)", w: 18 }].filter(Boolean);
+}
+/** Alles, was auf einer Liste steht (Platzhalter im Text schon ersetzt) */
+function listData(w, b) {
+  const L = listOf(b), date = blockDate(w, b);
+  const vars = { Titel: b.title, Datum: date, Uhrzeit: b.time, Ansprechpartner: b.contact, Treffpunkt: L.place, Gruppe: plan.subtitle, Plätze: L.seats };
+  const text = (L.text.trim() || plan.lists.text || "").replace(/\{([^{}]+)\}/g, (m, k) => vars[k.trim()] != null ? String(vars[k.trim()]) : m).replace(/\*\*\s*\*\*/g, "");
+  const info = [["Wann:", [date, b.time].filter(Boolean).join(" · ")], ["Treffpunkt:", L.place], ["Ansprechpartner:", b.contact], ["Plätze:", L.seats ? L.seats + " Kinder" : ""]].filter(r => r[1]);
+  return { L, b, date, text, info, seats: parseInt(L.seats) || 0, waitN: L.wait ? Math.max(0, +plan.lists.wait || 0) : 0 };
+}
+
+/** Listen-Seiten im (unsichtbaren) Druckbereich aufbauen und Zeilenhöhen so ausmessen, dass alles auf eine Seite passt */
+function buildListPages(items, append) {
+  const area = $("printArea"); if (!append) area.innerHTML = "";
+  const cols = listCols();
+  return items.map(({ w, b }) => {
+    const d = listData(w, b);
+    const pg = mk("div", "lpage");
+    for (const [v, c] of [["--l-head", plan.headColor], ["--l-title", plan.titleColor], ["--l-accent", plan.accentColor], ["--l-note", plan.noteColor], ["--l-line", plan.lineColor]]) pg.style.setProperty(v, c);
+    pg.innerHTML = `
+      <div class="l-top"><span class="l-kind">${esc(plan.deco)} Interessenliste</span><span class="l-group">${esc([plan.title, plan.subtitle].filter(Boolean).join(" · "))}</span></div>
+      <h1 class="l-h1">${b.icon ? `<span>${esc(b.icon)}</span>` : ""}${esc(b.title)}</h1>
+      ${d.info.length ? `<div class="l-info">${d.info.map(([k, v]) => `<b>${k}</b><span>${esc(v)}</span>`).join("")}</div>` : ""}
+      ${d.text ? `<div class="l-text">${md(d.text)}</div>` : ""}
+      ${d.L.bring ? `<div class="l-hint"><b>Bitte mitbringen:</b> ${md(d.L.bring)}</div>` : ""}
+      <div class="l-lh"><b>✏️ Hier eintragen – bitte deutlich schreiben!</b><span>${d.L.until ? "Eintragen bis " + esc(d.L.until) : ""}</span></div>
+      <div class="l-tw"><table><colgroup>${cols.map(c => `<col${c.w ? ` style="width:${c.w}mm"` : ""}>`).join("")}</colgroup>
+        <thead><tr>${cols.map(c => `<th class="c-${c.k}">${esc(c.t).replace("\n", "<br>")}</th>`).join("")}</tr></thead><tbody></tbody></table></div>
+      <div class="l-foot"><span>${b.contact ? "Ansprechpartner: " + esc(b.contact) : ""}</span><span>${esc(plan.title)}</span></div>`;
+    area.appendChild(pg);
+    // Platz messen: freie Höhe für die Zeilen = Tabellenbereich − Kopfzeile − Trennzeile „Warteliste“
+    const avail = pg.querySelector(".l-tw").clientHeight / PX;
+    const headH = pg.querySelector("thead").offsetHeight / PX;
+    const sepH = d.waitN ? 8 : 0;
+    const free = avail - headH - sepH - 2;
+    let n = d.seats, rowH;
+    if (n) rowH = free / (n + d.waitN);
+    else { const total = Math.max(d.waitN + 1, Math.floor(free / LIST_ROW)); n = total - d.waitN; rowH = free / total; }
+    const over = rowH < LIST_ROW_MIN;
+    rowH = Math.max(LIST_ROW_MIN, Math.min(LIST_ROW_MAX, rowH));
+    const tb = pg.querySelector("tbody");
+    const row = (nr, cls) => `<tr class="${cls}" style="height:${rowH.toFixed(2)}mm">${cols.map(c => `<td class="c-${c.k}">${c.k === "nr" ? nr : ""}</td>`).join("")}</tr>`;
+    let html = "";
+    for (let i = 1; i <= n; i++) html += row(i, "");
+    if (d.waitN) {
+      html += `<tr class="sep" style="height:${sepH}mm"><td colspan="${cols.length}">Warteliste</td></tr>`;
+      for (let i = 1; i <= d.waitN; i++) html += row("W" + i, "wait");
+    }
+    tb.innerHTML = html;
+    return { w, b, d, cols, n, rowH, headH, sepH, over, el: pg };
+  });
+}
+
+/** Vorschau-Fenster mit allen (oder einer) Liste; von dort drucken oder als Word speichern */
+/** Plan-Seiten (alle Wochen) als saubere Kopien ohne Griffe/Knöpfe in den Druckbereich legen */
+function buildPlanPages() {
+  const area = $("printArea"); area.innerHTML = "";
+  const keep = { active: plan.active, sel: selectedId, img: selImg };
+  selectedId = null; selImg = null;
+  const out = plan.weeks.map((w, i) => {
+    plan.active = i; renderSheet();
+    const pg = $("page").cloneNode(true);
+    pg.removeAttribute("id"); pg.style.transform = "none";
+    pg.querySelectorAll("[id]").forEach(x => x.removeAttribute("id"));
+    pg.querySelectorAll(".divider, .rowtools, .knob, .cell .add, .imgbox .ih, .imgbox .ix").forEach(x => x.remove());
+    pg.querySelectorAll(".overflow, .selected, .sel").forEach(x => x.classList.remove("overflow", "selected", "sel"));
+    pg.querySelectorAll(".gh").forEach((h, c) => { h.textContent = w.days[c] || ""; });
+    const wrap = mk("div", "ppage"); wrap.appendChild(pg); area.appendChild(wrap);
+    return { el: wrap, cap: w.name, W: PAGE_W, H: PAGE_H };
+  });
+  plan.active = keep.active; selectedId = keep.sel; selImg = keep.img;
+  renderSheet();
+  return out;
+}
+
+/** Vorschau-Fenster: Plan und/oder Interessenlisten ansehen, drucken oder als Word speichern */
+let preview = null;   // { planToo, items, title }
+function showPreview(opts) {
+  preview = opts;
+  const pages = [];
+  if (opts.planToo) pages.push(...buildPlanPages());
+  else $("printArea").innerHTML = "";
+  const lists = opts.planToo && !plan.lists.attach ? [] : opts.items;
+  if (!opts.planToo && !lists.length) return toast("Kein Angebot mit # (Interessenliste) vorhanden – im Feld „# Interessenliste“ anhaken.");
+  buildListPages(lists, true).forEach(p => pages.push({
+    el: p.el, W: LP.W, H: LP.H,
+    cap: `📋 ${p.b.title} · ${p.d.date}${p.over ? "  ⚠ zu viele Plätze – Zeilen sehr eng" : ""}${p.b.contact ? "" : "  ⚠ Ansprechpartner fehlt"}`
+  }));
+  $("lmodal").hidden = false;
+  closePop(); $("ctx").hidden = true;
+  const body = $("lmBody"); body.innerHTML = "";
+  const s = Math.max(0.3, Math.min(0.75, (body.clientWidth - 60) / (PAGE_W * PX)));
+  pages.forEach(p => {
+    const th = mk("div", "lthumb"); th.style.width = p.W * PX * s + "px"; th.style.height = p.H * PX * s + "px";
+    const c = p.el.cloneNode(true); c.style.transform = `scale(${s})`; th.appendChild(c);
+    const wrap = mk("div", "lwrap"); wrap.append(mk("div", "lcap", p.cap), th); body.appendChild(wrap);
+  });
+  $("lmTitle").textContent = opts.title || (opts.planToo ? "🖨 Druckansicht" : `📋 Interessenlisten (${pages.length})`);
+  $("lmAttachWrap").hidden = !opts.planToo;
+  $("lmAttach").checked = !!plan.lists.attach;
+}
+const showLists = (items, title) => showPreview({ planToo: false, items, title });
+function closeLists() { $("lmodal").hidden = true; renderCtx(); }
+
+/** Word-Abschnitte (je Liste ein Abschnitt A4 hoch mit eigener Fußzeile) */
+function listSections(K, pages) {
+  const { D, hex, tw, half, em, runs } = K;
+  const UW = LP.W - 2 * LP.side;
+  const line = { style: D.BorderStyle.SINGLE, size: 6, color: hex(plan.lineColor) };
+  const none = { style: D.BorderStyle.NONE, size: 0, color: "FFFFFF" };
+  const noB = { top: none, bottom: none, left: none, right: none };
+  const allB = { top: line, bottom: line, left: line, right: line };
+  const fill = (c) => ({ type: D.ShadingType.CLEAR, color: "auto", fill: hex(c) });
+  const sp = (before, after, lineF) => ({ before: tw(before), after: tw(after || 0), line: Math.round(240 * (lineF || 1)) });
+  return pages.map(p => {
+    const { b, d, cols } = p;
+    const kids = [];
+    kids.push(new D.Paragraph({
+      tabStops: [{ type: D.TabStopType.RIGHT, position: tw(UW) }], spacing: sp(0, 0),
+      border: { bottom: { style: D.BorderStyle.SINGLE, size: 24, color: hex(plan.accentColor), space: 4 } },
+      children: [...em((plan.deco ? plan.deco + " " : "") + "INTERESSENLISTE", { bold: true, size: half(11), color: hex(plan.accentColor) }),
+        ...em("\t" + [plan.title, plan.subtitle].filter(Boolean).join(" · "), { size: half(10), color: "555555" })]
+    }));
+    kids.push(new D.Paragraph({ spacing: sp(4, 3), children: em([b.icon, b.title].filter(Boolean).join("  "), { bold: true, size: half(22), color: hex(plan.titleColor) }) }));
+    if (d.info.length) {
+      const lw = 40;
+      kids.push(new D.Table({
+        width: { size: tw(UW), type: D.WidthType.DXA }, columnWidths: [tw(lw), tw(UW - lw)], layout: D.TableLayoutType.FIXED,
+        margins: { top: tw(0.6), bottom: tw(0.6), left: tw(5), right: tw(2) },
+        rows: d.info.map(([k, v]) => new D.TableRow({ children: [
+          new D.TableCell({ borders: noB, shading: fill(plan.headColor), width: { size: tw(lw), type: D.WidthType.DXA }, children: [new D.Paragraph({ spacing: sp(0, 0), children: em(k, { bold: true, size: half(11), color: hex(plan.titleColor) }) })] }),
+          new D.TableCell({ borders: noB, shading: fill(plan.headColor), width: { size: tw(UW - lw), type: D.WidthType.DXA }, children: [new D.Paragraph({ spacing: sp(0, 0), children: em(v, { size: half(11) }) })] }),
+        ] }))
+      }));
+    }
+    if (d.text) kids.push(new D.Paragraph({ spacing: sp(3, 0, 1.3), children: runs(d.text, { size: half(11) }) }));
+    if (d.L.bring) kids.push(new D.Paragraph({
+      spacing: sp(3, 0), shading: fill(plan.noteColor), indent: { left: tw(3) },
+      border: { left: { style: D.BorderStyle.SINGLE, size: 36, color: hex(plan.accentColor), space: 6 } },
+      children: [...em("Bitte mitbringen: ", { bold: true, size: half(11) }), ...runs(d.L.bring, { size: half(11) })]
+    }));
+    kids.push(new D.Paragraph({
+      tabStops: [{ type: D.TabStopType.RIGHT, position: tw(UW) }], spacing: sp(4, 2),
+      children: [...em("✏️ Hier eintragen – bitte deutlich schreiben!", { bold: true, size: half(14), color: hex(plan.titleColor) }),
+        ...em("\t" + (d.L.until ? "Eintragen bis " + d.L.until : ""), { size: half(10), color: "666666" })]
+    }));
+    // Spaltenbreiten: feste Spalten, „Name“ bekommt den Rest
+    const fixed = cols.reduce((a, c) => a + (c.w || 0), 0);
+    const cw = cols.map(c => tw(c.w || UW - fixed));
+    const rowH = p.rowH - 0.3;   // kleine Reserve, damit Word sicher auf einer Seite bleibt
+    const narrow = (c) => c.k === "nr" || c.k === "staff";   // schmale Spalten: kaum Innenabstand, sonst bricht „W1“ um
+    const cell = (c, i, kids, o) => new D.TableCell(Object.assign({ borders: allB, width: { size: cw[i], type: D.WidthType.DXA }, verticalAlign: D.VerticalAlign.CENTER,
+      margins: narrow(c) ? { left: tw(0.5), right: tw(0.5) } : undefined, children: [new D.Paragraph({ spacing: sp(0, 0), alignment: c.k === "nr" || c.k === "staff" ? D.AlignmentType.CENTER : D.AlignmentType.LEFT, children: kids })] }, o || {}));
+    const rows = [new D.TableRow({ tableHeader: true, cantSplit: true, height: { value: tw(p.headH), rule: D.HeightRule.EXACT },
+      children: cols.map((c, i) => cell(c, i, runs(c.t, { bold: true, color: "FFFFFF", size: half(c.k === "staff" ? 8.5 : 11) }), { shading: fill(plan.accentColor) })) })];
+    const body = (nr, wait) => new D.TableRow({ cantSplit: true, height: { value: tw(rowH), rule: D.HeightRule.EXACT },
+      children: cols.map((c, i) => cell(c, i, c.k === "nr" ? em(String(nr), { bold: true, size: half(12), color: wait ? "777777" : hex(plan.titleColor) }) : [],
+        c.k === "nr" ? { shading: fill(wait ? "#EDEDED" : plan.noteColor) } : {})) });
+    for (let i = 1; i <= p.n; i++) rows.push(body(i, false));
+    if (d.waitN) {
+      rows.push(new D.TableRow({ cantSplit: true, height: { value: tw(p.sepH), rule: D.HeightRule.EXACT }, children: [new D.TableCell({
+        columnSpan: cols.length, borders: { top: line, bottom: line, left: none, right: none }, verticalAlign: D.VerticalAlign.BOTTOM,
+        children: [new D.Paragraph({ spacing: sp(0, 0.5), children: em("Warteliste", { bold: true, size: half(12), color: "666666" }) })] })] }));
+      for (let i = 1; i <= d.waitN; i++) rows.push(body("W" + i, true));
+    }
+    kids.push(new D.Table({ width: { size: tw(UW), type: D.WidthType.DXA }, columnWidths: cw, layout: D.TableLayoutType.FIXED,
+      margins: { top: 0, bottom: 0, left: tw(3), right: tw(3) }, rows }));
+    // Word braucht nach einer Tabelle noch einen Absatz – winzig, damit keine leere Folgeseite entsteht
+    kids.push(new D.Paragraph({ spacing: { before: 0, after: 0, line: 20, lineRule: "exact" }, children: [new D.TextRun({ text: "", size: 2 })] }));
+    return {
+      properties: { page: {
+        size: { orientation: D.PageOrientation.PORTRAIT, width: tw(LP.W), height: tw(LP.H) },
+        margin: { top: tw(LP.top), bottom: tw(LP.bottom), left: tw(LP.side), right: tw(LP.side), header: tw(5), footer: tw(LP.foot) }
+      } },
+      footers: { default: new D.Footer({ children: [new D.Paragraph({
+        tabStops: [{ type: D.TabStopType.RIGHT, position: tw(UW) }],
+        children: [...em(b.contact ? "Ansprechpartner: " + b.contact : "", { size: half(9), color: "777777" }), ...em("\t" + plan.title, { size: half(9), color: "777777" })]
+      })] }) },
+      children: kids
+    };
+  });
+}
+async function exportListsWord(items) {
+  if (!window.docx) return toast("Word-Bibliothek nicht geladen (Datei lib/docx.js fehlt?).");
+  if (!items.length) return toast("Kein Angebot mit # vorhanden.");
+  const K = wordKit(), { D, half } = K;
+  const doc = new D.Document({
+    creator: "Ferienprogramm-Planer", title: "Interessenlisten – " + plan.title,
+    styles: { default: { document: { run: { font: K.font, size: half(11) }, paragraph: { spacing: { before: 0, after: 0, line: 240 } } } } },
+    sections: listSections(K, buildListPages(items))
+  });
+  download(await D.Packer.toBlob(doc), "Interessenlisten_" + safeName(items.length === 1 ? items[0].b.title : plan.title || "Ferienprogramm") + ".docx");
+  toast("✔ Interessenlisten als Word-Datei erstellt");
+}
+
+/* ============================================================
+   Dateien: Datenordner (Chrome) – Notlösung: Arbeitsmappe (eine JSON-Datei mit allem)
+   Datenordner:  plaene/<Name>.json · bilder/* · baukasten.json
+   ============================================================ */
+const FS_OK = !!window.showDirectoryPicker;
+const store = {
+  kind: null,      // "folder" | "book" | null
+  name: "",        // Ordner- bzw. Dateiname
+  dir: null,       // Ordner-Zugriff (Datenordner)
+  plans: {},       // Name → { plan, mtime } (für Archiv und zum Wechseln)
+  images: [],      // { name, src | file }
+  dirty: false, saving: false, again: false, savedHandle: null
+};
+const FILE_VER = 2;
+
+/* -- kleiner Speicher für den Ordner-Zugriff (zu Hause bleibt er erhalten, im Schulnetz nicht) -- */
+function idb() { return new Promise((res, rej) => { const r = indexedDB.open("ferienplaner", 1); r.onupgradeneeded = () => r.result.createObjectStore("kv"); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }); }
+async function idbGet(k) { try { const db = await idb(); return await new Promise(res => { const q = db.transaction("kv").objectStore("kv").get(k); q.onsuccess = () => res(q.result); q.onerror = () => res(null); }); } catch (e) { return null; } }
+async function idbSet(k, v) { try { const db = await idb(); await new Promise(res => { const t = db.transaction("kv", "readwrite"); t.objectStore("kv").put(v, k); t.oncomplete = res; t.onerror = res; }); } catch (e) {} }
+
+/* -- Hilfen -- */
+const clone = (o) => JSON.parse(JSON.stringify(o));
+function uniqueName(base) {
+  base = safeName(base || "Plan"); let n = base, i = 2;
+  while (store.plans[n] && n !== planName) n = `${base}_${i++}`;
+  return n;
+}
+function imgUrl(img) { if (!img.url) img.url = img.src || URL.createObjectURL(img.file); return img.url; }
+async function imageData(img) {
+  if (img.file) return shrinkImage(img.file, 900);
+  return { src: img.src, ar: await imgAr({ src: img.src }) };
+}
+const dataUrlExt = (u) => /^data:image\/png/.test(u) ? ".png" : ".jpg";
+/** Hochgeladenes Bild in der Bild-Bibliothek merken (im Datenordner als Datei unter bilder/) */
+function rememberImage(name, src) {
+  name = (name || "bild").replace(/\.[^.]+$/, "").replace(/[\\/:*?"<>|]+/g, "_") + dataUrlExt(src);
+  if (store.images.some(i => i.name === name)) return;
+  store.images.push({ name, src });
+  if (store.kind === "folder") writeFile(["bilder", name], new Blob([dataUrlToBytes(src)])).catch(() => {});
+  else markDirty();
+  if ((ui.libTab || "lib") === "img") renderLib();
+}
+
+/* -- Datenordner -- */
+async function folder(path, create) { let d = store.dir; for (const p of path) d = await d.getDirectoryHandle(p, { create: !!create }); return d; }
+async function writeFile(path, data) {
+  const dir = await folder(path.slice(0, -1), true);
+  const fh = await dir.getFileHandle(path[path.length - 1], { create: true });
+  const w = await fh.createWritable(); await w.write(data); await w.close();
+}
+async function connectFolder(handle) {
+  try {
+    if (!handle) handle = await window.showDirectoryPicker({ id: "ferienplaner", mode: "readwrite" });
+    if ((await handle.queryPermission({ mode: "readwrite" })) !== "granted" && (await handle.requestPermission({ mode: "readwrite" })) !== "granted")
+      return toast("Ohne Erlaubnis kann der Ordner nicht genutzt werden.");
+  } catch (e) { if (e.name !== "AbortError") toast("Ordner konnte nicht geöffnet werden: " + e.message); return; }
+  const keep = { plan, planName };   // der gerade offene Plan geht nicht verloren
+  Object.assign(store, { kind: "folder", dir: handle, name: handle.name, plans: {}, images: [] });
+  await idbSet("dir", handle);
+  try {
+    for await (const [n, h] of (await folder(["plaene"], true)).entries()) {
+      if (h.kind !== "file" || !/\.json$/i.test(n)) continue;
+      try { const f = await h.getFile(); const data = JSON.parse(await f.text()); store.plans[n.replace(/\.json$/i, "")] = { plan: migrate(data.plan || data), mtime: f.lastModified }; } catch (e) {}
+    }
+    for await (const [n, h] of (await folder(["bilder"], true)).entries())
+      if (h.kind === "file" && /\.(png|jpe?g|gif|webp)$/i.test(n)) store.images.push({ name: n, file: await h.getFile() });
+    try { const f = await (await store.dir.getFileHandle("baukasten.json")).getFile(); const L = JSON.parse(await f.text()); if (Array.isArray(L.lib || L)) lib = L.lib || L; } catch (e) {}
+  } catch (e) { toast("Fehler beim Lesen des Ordners: " + e.message); }
+  // Ist der offene Plan schon im Ordner? Dann die (neuere) Ordner-Fassung behalten, sonst den offenen Plan dort speichern.
+  if (keep.planName && store.plans[keep.planName]) { openPlan(keep.planName, true); }
+  else { planName = uniqueName(keep.planName || keep.plan.title); store.plans[planName] = { plan, mtime: Date.now() }; await saveNow(); }
+  renderAll(); renderFiles(); updateSave();
+  toast(`📂 Datenordner „${store.name}“ verbunden – es wird automatisch gespeichert.`);
+}
+
+/* -- Speichern -- */
+function markDirty() {
+  if (!store) return;
+  store.dirty = true; updateSave();
+  if (store.kind === "folder") { clearTimeout(markDirty.t); markDirty.t = setTimeout(() => saveNow(), 1200); }
+}
+async function saveNow() {
+  if (store.kind === "folder") {
+    if (store.saving) { store.again = true; return; }
+    store.saving = true; updateSave();
+    try {
+      if (!planName) planName = uniqueName(plan.title);
+      store.plans[planName] = { plan, mtime: Date.now() };
+      await writeFile(["plaene", planName + ".json"], JSON.stringify({ app: "ferienplaner", version: FILE_VER, plan }));
+      await writeFile(["baukasten.json"], JSON.stringify({ app: "ferienplaner", version: FILE_VER, lib }, null, 1));
+      store.dirty = false;
+    } catch (e) { toast("⚠ Speichern im Ordner fehlgeschlagen: " + e.message); }
+    store.saving = false; updateSave();
+    if (store.again) { store.again = false; saveNow(); }
+    return;
+  }
+  // Arbeitsmappe: alles in einer Datei herunterladen
+  if (!planName) planName = uniqueName(plan.title);
+  store.plans[planName] = { plan, mtime: Date.now() };
+  if (!store.kind) { store.kind = "book"; store.name = "Ferienprogramm.json"; }
+  download(new Blob([JSON.stringify(await workbook())], { type: "application/json" }), store.name);
+  store.dirty = false; updateSave();
+  toast("💾 Arbeitsmappe gespeichert (Download) – die Datei gut aufheben und beim nächsten Mal wieder öffnen.");
+}
+async function workbook() {
+  const plans = {}; for (const [n, e] of Object.entries(store.plans)) plans[n] = e.plan;
+  plans[planName] = plan;
+  const images = [];
+  for (const i of store.images) images.push({ name: i.name, src: i.src || (await imageData(i)).src });
+  return { app: "ferienplaner", kind: "arbeitsmappe", version: FILE_VER, current: planName, plans, lib, images };
+}
+function updateSave() {
+  const b = $("btnSave"); if (!b) return;
+  b.classList.remove("dirty", "ok");
+  if (store.kind === "folder") {
+    b.textContent = store.saving ? "⏳ speichert …" : store.dirty ? "💾 Speichern" : "✔ gespeichert";
+    b.title = `Datenordner „${store.name}“ – speichert automatisch` + (planName ? ` (plaene/${planName}.json)` : "");
+    if (!store.dirty && !store.saving) b.classList.add("ok");
+  } else {
+    b.textContent = store.dirty ? "💾 Speichern ●" : "💾 Speichern";
+    b.title = store.kind === "book" ? `Arbeitsmappe „${store.name}“ herunterladen (alles in einer Datei)` : "Noch nicht in einer Datei gespeichert – Datenordner wählen oder Arbeitsmappe speichern";
+    if (store.dirty) b.classList.add("dirty");
+  }
+  $("btnFiles").textContent = "📂 " + (planName ? planName.replace(/_/g, " ") : "Pläne");
+}
+
+/* -- Pläne wechseln / neu / öffnen -- */
+function openPlan(name, quiet) {
+  const e = store.plans[name]; if (!e) return;
+  if (planName && planName !== name) store.plans[planName] = { plan, mtime: store.plans[planName]?.mtime || Date.now() };
+  plan = migrate(e.plan); e.plan = plan; planName = name;
+  undoStack.length = 0; selectedId = null; selImg = null;
+  persist(); store.dirty = false; renderAll(); updateSave();
+  if (!quiet) toast(`„${name.replace(/_/g, " ")}“ geöffnet`);
+}
+function newPlan() {
+  const name = prompt("Name für den neuen Plan (z. B. Sommerferien 2027):", "");
+  if (!name) return;
+  if (planName) store.plans[planName] = { plan, mtime: store.plans[planName]?.mtime || Date.now() };
+  const keep = { title: name, subtitle: plan.subtitle, footer: plan.footer, theme: plan.theme, deco: plan.deco, lists: plan.lists };
+  plan = Object.assign(demoPlan(), keep, pickTheme(keep.theme), { active: 0, weeks: [newWeek("Woche 1", "", 5)] });
+  planName = uniqueName(name);
+  store.plans[planName] = { plan, mtime: Date.now() };
+  undoStack.length = 0; selectedId = null; selImg = null;
+  persist(); renderAll(); closeFiles();
+  toast("Neuer Plan angelegt – im Fenster „🎨 Seite & Design“ das Startdatum wählen.");
+}
+function copyPlan() {
+  const name = prompt("Name für die Kopie:", (planName || plan.title).replace(/_/g, " ") + " Kopie");
+  if (!name) return;
+  store.plans[planName || uniqueName(plan.title)] = { plan: clone(plan), mtime: Date.now() };
+  plan = clone(plan); plan.title = name; planName = uniqueName(name);
+  store.plans[planName] = { plan, mtime: Date.now() };
+  persist(); renderAll(); renderFiles(); toast(`Kopie „${name}“ angelegt`);
+}
+/** Datei öffnen: Arbeitsmappe (alles) oder einzelner Plan (wird zum Datenordner/zur Arbeitsmappe hinzugefügt) */
+async function openFile(f) {
+  let data; try { data = JSON.parse(await f.text()); } catch (e) { return toast("Datei konnte nicht gelesen werden."); }
+  if (data.kind === "arbeitsmappe" && data.plans) {
+    if (store.kind === "folder") {   // Inhalt in den Datenordner übernehmen
+      for (const [n, p] of Object.entries(data.plans)) { const nn = store.plans[n] ? uniqueName(n) : n; store.plans[nn] = { plan: migrate(p), mtime: Date.now() }; await writeFile(["plaene", nn + ".json"], JSON.stringify({ app: "ferienplaner", version: FILE_VER, plan: p })); }
+      for (const i of data.images || []) rememberImage(i.name, i.src);
+      mergeLib(data.lib); await saveNow(); renderAll(); renderFiles();
+      return toast(`Arbeitsmappe in den Datenordner übernommen (${Object.keys(data.plans).length} Pläne)`);
+    }
+    Object.assign(store, { kind: "book", name: f.name, plans: {}, images: (data.images || []).map(i => ({ name: i.name, src: i.src })) });
+    for (const [n, p] of Object.entries(data.plans)) store.plans[n] = { plan: migrate(p), mtime: Date.now() };
+    if (Array.isArray(data.lib)) lib = data.lib;
+    planName = "";
+    openPlan(data.current && store.plans[data.current] ? data.current : Object.keys(store.plans)[0], true);
+    renderFiles();
+    return toast(`📄 Arbeitsmappe „${f.name}“ geöffnet`);
+  }
+  // einzelner Plan (älteres Format)
+  const p = migrate(data.plan || data);
+  if (planName) store.plans[planName] = { plan, mtime: store.plans[planName]?.mtime || Date.now() };
+  plan = p; planName = uniqueName(f.name.replace(/\.json$/i, "") || p.title);
+  store.plans[planName] = { plan, mtime: Date.now() };
+  if (!store.kind) { store.kind = "book"; store.name = "Ferienprogramm.json"; }
+  mergeLib(data.lib);
+  undoStack.length = 0; selectedId = null; selImg = null;
+  persist(); renderAll(); renderFiles(); toast("Plan geöffnet");
+}
+function mergeLib(L) { if (!Array.isArray(L)) return; const have = new Set(lib.map(x => x.title)); L.forEach(x => { if (!have.has(x.title)) lib.push(x); }); }
+
+/* -- Dialog „Pläne & Speicherort“ -- */
+function openFiles() { $("fmodal").hidden = false; renderFiles(); }
+function closeFiles() { $("fmodal").hidden = true; }
+function renderFiles() {
+  const B = $("fmBody"); if (!B || $("fmodal").hidden) return;
+  const sh = store.savedHandle;
+  let where;
+  if (store.kind === "folder") where = `<div class="where ok"><span class="big">📂</span><div class="txt"><b>Datenordner: ${esc(store.name)}</b>Alles wird automatisch gespeichert (Pläne in <i>plaene/</i>, Bilder in <i>bilder/</i>).</div><button class="small" data-a="folder">Anderer Ordner …</button></div>`;
+  else if (store.kind === "book") where = `<div class="where"><span class="big">📄</span><div class="txt"><b>Arbeitsmappe: ${esc(store.name)}</b>Zum Sichern auf „💾 Speichern“ klicken – die Datei landet im Download-Ordner.</div>${FS_OK ? `<button class="small" data-a="folder">Datenordner wählen</button>` : ""}</div>`;
+  else where = `<div class="where warn"><span class="big">⚠</span><div class="txt"><b>Noch nicht in einer Datei gespeichert</b>Der Browser vergisst im Schulnetz beim Schließen alles. Bitte einen Speicherort wählen:</div></div>`;
+  const choices = store.kind === "folder" ? "" : `<div class="choices" style="margin-top:10px">
+      ${sh ? `<div class="choice"><b>🔌 Ordner „${esc(sh.name)}“</b><p>Den zuletzt benutzten Datenordner wieder verbinden.</p><button class="primary" data-a="reconnect">Verbinden</button></div>` : ""}
+      ${FS_OK ? `<div class="choice"><b>📂 Datenordner</b><p>Einmal einen Ordner wählen (z. B. auf dem Netzlaufwerk oder USB-Stick). Danach speichert alles automatisch.</p><button class="${sh ? "" : "primary"}" data-a="folder">Ordner wählen …</button></div>` : ""}
+      <div class="choice"><b>📄 Arbeitsmappe</b><p>Notlösung: alles in <i>einer</i> Datei. Beim Start öffnen, am Ende speichern (Download).</p><button data-a="open">Datei öffnen …</button></div>
+    </div>`;
+  const names = Object.keys(store.plans);
+  if (planName && !names.includes(planName)) names.push(planName);
+  const rows = names.sort((a, b) => (store.plans[b]?.mtime || 0) - (store.plans[a]?.mtime || 0)).map(n => {
+    const p = n === planName ? plan : store.plans[n].plan, cur = n === planName;
+    const when = store.plans[n]?.mtime ? new Date(store.plans[n].mtime).toLocaleDateString("de-DE") : "";
+    return `<div class="pr${cur ? " cur" : ""}"><div class="nm"><b>${esc(n.replace(/_/g, " "))}</b><small>${esc(p.title || "")} · ${p.weeks.length} Woche${p.weeks.length > 1 ? "n" : ""}${when ? " · " + when : ""}</small></div>
+      ${cur ? `<span class="hint">geöffnet</span>` : `<button class="small" data-open="${esc(n)}">Öffnen</button>`}</div>`;
+  }).join("");
+  B.innerHTML = `<h3>Speicherort</h3>${where}${choices}
+    <h3>Pläne</h3>
+    <div class="plist">${rows}${planName ? "" : `<div class="pr cur"><div class="nm"><b>${esc(plan.title || "Plan")}</b><small>noch nicht gespeichert · ${plan.weeks.length} Woche${plan.weeks.length > 1 ? "n" : ""}</small></div><span class="hint">geöffnet</span></div>`}</div>
+    <div class="btnrow"><button class="primary" data-a="new">＋ Neuer Plan</button><button data-a="copy">⧉ Kopie des aktuellen Plans</button></div>
+    <h3>Sichern &amp; Weitergeben</h3>
+    <div class="btnrow" style="margin-top:0">
+      <button data-a="book">⬇ Arbeitsmappe herunterladen</button>
+      <button data-a="one">⬇ Nur diesen Plan</button>
+      <button data-a="open">⬆ Datei öffnen / übernehmen …</button>
+    </div>
+    <p class="hint">Die Arbeitsmappe enthält alle Pläne, den Baukasten und die Bilder – gut zum Sichern oder um sie Kolleg:innen zu geben.</p>`;
+  B.querySelectorAll("[data-open]").forEach(x => x.onclick = () => { openPlan(x.dataset.open); closeFiles(); });
+  B.querySelectorAll("[data-a]").forEach(x => x.onclick = async () => {
+    const a = x.dataset.a;
+    if (a === "folder") await connectFolder();
+    else if (a === "reconnect") await connectFolder(sh);
+    else if (a === "open") $("fileLoad").click();
+    else if (a === "new") newPlan();
+    else if (a === "copy") copyPlan();
+    else if (a === "book") download(new Blob([JSON.stringify(await workbook())], { type: "application/json" }), "Ferienprogramm.json");
+    else if (a === "one") download(new Blob([JSON.stringify({ app: "ferienplaner", version: FILE_VER, plan, lib })], { type: "application/json" }), safeName(planName || plan.title) + ".json");
+  });
+}
+
+/* ============================================================
+   Speichern / Laden, Sonstiges
+   ============================================================ */
+const safeName = (s) => s.replace(/[^\wäöüÄÖÜß\- ]+/g, "").trim().replace(/\s+/g, "_") || "plan";
+function download(blob, name) {
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+let toastT;
+function toast(msg) { const t = $("toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove("show"), 2800); }
+
+function wire() {
+  $("btnUndo").onclick = undo;
+  $("btnFiles").onclick = openFiles;
+  $("fmClose").onclick = closeFiles;
+  $("fmodal").addEventListener("pointerdown", (e) => { if (e.target === $("fmodal")) closeFiles(); });
+  $("btnSave").onclick = () => (store.kind ? saveNow() : openFiles());
+  $("fileLoad").onchange = async () => { const f = $("fileLoad").files[0]; if (f) { await openFile(f); closeFiles(); } $("fileLoad").value = ""; };
+  // Baukasten-Reiter
+  document.querySelectorAll("#libTabs button").forEach(x => x.onclick = () => { ui.libTab = x.dataset.t; saveUi(); renderLib(); });
+  $("libSearch").oninput = renderLib;
+  $("libImgInput").onchange = async () => {
+    for (const f of [...$("libImgInput").files]) { try { const d = await shrinkImage(f, 900); rememberImage(f.name, d.src); } catch (e) { toast("Bild konnte nicht gelesen werden: " + f.name); } }
+    $("libImgInput").value = ""; renderLib();
+  };
+  // Warnung beim Schließen, wenn noch nicht in einer Datei gespeichert
+  addEventListener("beforeunload", (e) => { if (store.dirty && store.kind !== "folder") { e.preventDefault(); e.returnValue = ""; } });
+  $("imgInput").onchange = () => { const b = findBlock(selectedId); if (b) addImages(b, [...$("imgInput").files]); $("imgInput").value = ""; };
+  $("btnWord").onclick = () => exportWord().catch(e => { console.error(e); toast("Fehler beim Export: " + e.message); });
+  $("btnFit").onclick = autoFit;
+  $("btnDesign").onclick = () => {
+    const open = ui.float && !ui.min && $("rightBody").dataset.for === "page";
+    selectedId = null; selImg = null; renderSheet(); renderRight();
+    ui.min = open; saveUi(); applyWindowMode(); placeWindow();   // zweiter Klick klappt wieder ein
+  };
+  $("btnLists").onclick = () => showLists(listItems());
+  addEventListener("scroll", positionCtx, true); addEventListener("resize", positionCtx);
+  addEventListener("pointerdown", (e) => { if (popAnchor && !e.target.closest("#ctxpop, #ctx")) closePop(); });
+  $("lmClose").onclick = closeLists;
+  $("btnPrint").onclick = () => showPreview({ planToo: true, items: listItems() });
+  $("lmAttach").onchange = () => { plan.lists.attach = $("lmAttach").checked; persist(); showPreview(Object.assign(preview, { items: listItems() })); };
+  $("lmPrint").onclick = () => { showPreview(preview); window.print(); };
+  $("lmWord").onclick = () => (preview.planToo ? exportWord() : exportListsWord(preview.items)).catch(e => { console.error(e); toast("Fehler beim Export: " + e.message); });
+  $("btnAddRow").onclick = addRow;
+  $("btnAddCol").onclick = addCol;
+  let rt; window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(renderSheet, 120); });
+
+  // Klick neben die Seite hebt die Auswahl auf
+  $("stage").addEventListener("click", (e) => {
+    if (!e.target.closest(".block, .cell, .gh, .rowtools") && selectedId) { selectedId = null; selImg = null; renderSheet(); renderRight(); }
+  });
+  document.addEventListener("keydown", (e) => {
+    const typing = /INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName) || document.activeElement?.isContentEditable;
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z" && !typing) { e.preventDefault(); undo(); }
+    if ((e.key === "Delete" || e.key === "Backspace") && !typing && selectedId) { e.preventDefault(); deleteSelected(); }
+    if (!$("lmodal").hidden) { if (e.key === "Escape") closeLists(); return; }
+    if (!$("fmodal").hidden) { if (e.key === "Escape") closeFiles(); return; }
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") { e.preventDefault(); $("btnSave").click(); return; }
+    if (e.key === "Enter" && !typing && selectedId && !selImg) {   // Enter = Titel des ausgewählten Felds bearbeiten
+      const sp = document.querySelector(`#grid .block[data-id="${selectedId}"] [data-k="title"]`);
+      if (sp) { e.preventDefault(); startInline(null, findBlock(selectedId), sp, true); }
+    }
+    if (e.key === "Escape") { selectedId = null; selImg = null; renderSheet(); renderRight(); }
+  });
+}
+
+wire();
+wireWindow();
+renderAll();
+store.dirty = false; updateSave();
+// Beim Start nach dem Speicherort fragen (im Schulnetz ist der Browser-Speicher nach jedem Schließen leer)
+idbGet("dir").then(h => { store.savedHandle = h || null; if (!store.kind) openFiles(); });
+// Schriften können verzögert laden → Überlauf danach erneut prüfen
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => renderSheet());
+</script>
+</body>
+</html>

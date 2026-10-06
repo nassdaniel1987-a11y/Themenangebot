@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Test – Datenordner</title>
+<style>
+  body { font-family: Arial, sans-serif; max-width: 640px; margin: 40px auto; padding: 0 16px; color: #222; background: #fff; }
+  h1 { color: #843C0C; font-size: 22px; }
+  button { font-size: 16px; padding: 10px 18px; background: #C55A11; color: #fff; border: 0; border-radius: 6px; cursor: pointer; }
+  ol { line-height: 1.6; }
+  #log { margin-top: 20px; padding: 12px 14px; background: #f5f5f5; border-radius: 6px; white-space: pre-wrap; font-family: Consolas, monospace; font-size: 14px; min-height: 40px; }
+  .ok { color: #2e7d32; font-weight: bold; } .err { color: #c62828; font-weight: bold; }
+</style>
+</head>
+<body>
+<h1>📂 Test: Darf Chrome hier in einen Ordner speichern?</h1>
+<ol>
+  <li>Auf den Knopf klicken.</li>
+  <li>Einen Ordner wählen, in dem du dauerhaft speichern kannst (z. B. Netzlaufwerk oder Home-Ordner), und Zugriff erlauben.</li>
+  <li>Ergebnis unten ablesen.</li>
+</ol>
+<button id="go">Ordner wählen &amp; testen</button>
+<div id="log">Noch nicht getestet.</div>
+<script>
+const log = (t, c) => { const d = document.createElement("div"); if (c) d.className = c; d.textContent = t; document.getElementById("log").appendChild(d); };
+document.getElementById("go").onclick = async () => {
+  document.getElementById("log").textContent = "";
+  log("Browser: " + navigator.userAgent.match(/(Chrome|Edg|Firefox)\/[\d.]+/g)?.join(", "));
+  if (!window.showDirectoryPicker) { log("✗ Ordnerzugriff wird von diesem Browser nicht unterstützt (oder ist gesperrt).", "err"); return; }
+  try {
+    const dir = await window.showDirectoryPicker({ mode: "readwrite" });
+    log("✓ Ordner gewählt: " + dir.name, "ok");
+    const sub = await dir.getDirectoryHandle("ferienplaner-test", { create: true });
+    const fh = await sub.getFileHandle("test.json", { create: true });
+    const w = await fh.createWritable();
+    const data = { test: true, zeit: new Date().toLocaleString("de-DE") };
+    await w.write(JSON.stringify(data, null, 2)); await w.close();
+    log("✓ Datei geschrieben: ferienplaner-test/test.json", "ok");
+    const back = JSON.parse(await (await fh.getFile()).text());
+    log("✓ Datei wieder gelesen (" + back.zeit + ")", "ok");
+    log("\n👍 Alles klappt – der Datenordner kann genutzt werden.", "ok");
+    log("Den Ordner „ferienplaner-test“ kannst du danach löschen.");
+  } catch (e) {
+    if (e.name === "AbortError") log("Abgebrochen (kein Ordner gewählt).");
+    else log("✗ Fehler: " + e.name + " – " + e.message, "err");
+  }
+};
+</script>
+</body>
+</html>
