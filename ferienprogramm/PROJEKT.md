@@ -5,11 +5,11 @@ Branch `claude/html-table-word-export-6gpc7b`)
 
 ## Worum geht's?
 
-Eine **einzelne HTML-Datei** (`index.html`), mit der man Ferienprogramm-Pläne für Kinder/Hort
+Eine **einzelne HTML-Datei** (`Ferienprogramm.html`), mit der man Ferienprogramm-Pläne für Kinder/Hort
 (Vorlage: „Herbst Junior GTS1“, Word-Tabelle A4 quer, Wochentage als Spalten, Angebote als Felder)
 im Browser zusammenbaut und als **Word-Datei (.docx)** exportiert.
 
-- Kein Build, keine Installation: `index.html` per Doppelklick im Browser öffnen.
+- Kein Build, keine Installation: `Ferienprogramm.html` per Doppelklick im Browser öffnen.
 - Einzige Abhängigkeit: die Bibliothek **docx** (v9.5.1), lokal in `lib/docx.js` (UMD, stellt `window.docx` bereit)
   → Export geht auch offline.
 - Gespeichert wird in **Dateien** (Datenordner oder Arbeitsmappe, s. u.); `localStorage` ist nur Absturzschutz
@@ -19,7 +19,7 @@ im Browser zusammenbaut und als **Word-Datei (.docx)** exportiert.
 
 | Datei | Inhalt |
 |---|---|
-| `index.html` | Die komplette App (CSS + HTML + JS in einer Datei – bewusst nicht aufgeteilt) |
+| `Ferienprogramm.html` | Die komplette App (CSS + HTML + JS in einer Datei – bewusst nicht aufgeteilt) |
 | `lib/docx.js` | docx 9.5.1 (UMD) für den Word-Export |
 | `README.md` | Kurzbeschreibung für Nutzer |
 | `PROJEKT.md` | Diese Übersicht |
@@ -131,7 +131,7 @@ plan = {
 ```
 `migrate()` wandelt ältere Pläne (Raster mit `col/row/cs/rs`, `rowH`) automatisch in Rechtecke um.
 
-## Code-Landkarte (`index.html`)
+## Code-Landkarte (`Ferienprogramm.html`)
 
 - **Konstanten/Themen**: `PX`, `TW`, `EMU`, `PAGE_W/H`, `SAFETY`, `THEMES`, `EMOJIS`
 - **Modell**: `block()`, `demoPlan()`, `defaultLib()`, `migrate()`, `fromGrid()`, `newWeek()`, `fillTile()/clearTile()/contentOf()`
