@@ -30,9 +30,19 @@ if not defined CHROME (
   exit /b 1
 )
 
-rem Pfad von Ferienprogramm.html als file-Adresse (auch fuer Netzwerkpfade \\server\...)
+rem Die Seite wird als normaler Dateipfad uebergeben (wie beim Doppelklick) - das klappt
+rem auch mit Umlauten und Punkten im Pfad. --app="file:///..." wurde im Schulnetz ignoriert.
 set "SEITE=%HIER%Ferienprogramm.html"
-set "SEITE=%SEITE:\=/%"
-if "%SEITE:~0,2%"=="//" (set "URL=file:%SEITE%") else (set "URL=file:///%SEITE%")
+if not exist "%SEITE%" (
+  echo Ferienprogramm.html liegt nicht neben dieser Startdatei:
+  echo %HIER%
+  pause
+  exit /b 1
+)
 
-start "" "%CHROME%" --user-data-dir="%PROFIL%" --disk-cache-dir="%CACHE%" --no-first-run --no-default-browser-check --app="%URL%"
+rem Kleines Protokoll zur Fehlersuche (start-log.txt neben dieser Datei)
+> "%HIER%start-log.txt" echo Chrome: %CHROME%
+>> "%HIER%start-log.txt" echo Profil: %PROFIL%
+>> "%HIER%start-log.txt" echo Seite:  %SEITE%
+
+start "" "%CHROME%" --user-data-dir="%PROFIL%" --disk-cache-dir="%CACHE%" --no-first-run --no-default-browser-check --new-window "%SEITE%"
