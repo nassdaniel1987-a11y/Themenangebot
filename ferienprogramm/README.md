@@ -5,13 +5,13 @@ oder direkt **gedruckt** ausgeben. Dazu automatisch **Interessenlisten** zum Ein
 
 ## Starten
 
-`index.html` per Doppelklick in **Chrome** (oder Edge) öffnen. Keine Installation, kein Internet nötig
-(die Word-Bibliothek liegt in `lib/docx.js` – der Ordner `lib` muss neben `index.html` liegen).
+`Ferienprogramm.html` per Doppelklick in **Chrome** (oder Edge) öffnen. Keine Installation, kein Internet nötig
+(die Word-Bibliothek liegt in `lib/docx.js` – der Ordner `lib` muss neben `Ferienprogramm.html` liegen).
 
 ### Im Schulnetz: `Ferienprogramm starten.bat`
 
 Die Schul-Startdatei `O:\Google Chrome.bat` kopiert Chrome bei jedem Start neu (`robocopy /MIR`) und löscht dabei
-das Chrome-Profil – deshalb vergisst Chrome den Datenordner. `Ferienprogramm starten.bat` (liegt neben `index.html`)
+das Chrome-Profil – deshalb vergisst Chrome den Datenordner. `Ferienprogramm starten.bat` (liegt neben `Ferienprogramm.html`)
 startet dieselbe Chrome-Kopie, aber mit eigenem Profil im Ordner `Chromeprofil` daneben. Der Planer öffnet sich als
 eigenes Fenster; der Datenordner wird gemerkt („🔌 Verbinden“ statt jedes Mal neu suchen).
 Den ganzen Ordner dafür auf ein Laufwerk legen, das erhalten bleibt (z. B. Home-Laufwerk).

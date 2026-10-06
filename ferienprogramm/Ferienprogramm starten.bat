@@ -4,7 +4,7 @@ rem Startet den Ferienprogramm-Planer in Chrome mit einem EIGENEN, dauerhaften P
 rem Grund: "O:\Google Chrome.bat" spiegelt Chrome bei jedem Start mit robocopy /MIR neu
 rem nach %USERPROFILE%\GoogleChromePortable - dabei wird das Profil (und damit der
 rem gemerkte Datenordner) jedes Mal geloescht. Unser Profil liegt deshalb hier neben
-rem index.html im Ordner "Chromeprofil" und bleibt erhalten.
+rem Ferienprogramm.html im Ordner "Chromeprofil" und bleibt erhalten.
 
 set "HIER=%~dp0"
 set "PROFIL=%HIER%Chromeprofil"
@@ -30,8 +30,8 @@ if not defined CHROME (
   exit /b 1
 )
 
-rem Pfad von index.html als file-Adresse (auch fuer Netzwerkpfade \\server\...)
-set "SEITE=%HIER%index.html"
+rem Pfad von Ferienprogramm.html als file-Adresse (auch fuer Netzwerkpfade \\server\...)
+set "SEITE=%HIER%Ferienprogramm.html"
 set "SEITE=%SEITE:\=/%"
 if "%SEITE:~0,2%"=="//" (set "URL=file:%SEITE%") else (set "URL=file:///%SEITE%")
 
